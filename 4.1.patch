@@ -1,0 +1,1066 @@
+diff --git a/uni-client/pages/components/List.vue b/uni-client/pages/components/List.vue
+index 5605508..a41db72 100644
+--- a/uni-client/pages/components/List.vue
++++ b/uni-client/pages/components/List.vue
+@@ -113,26 +113,23 @@
+ 				this.$emit("selectShare", item)
+ 			},
+ 			// 删除
+-			deleteFn(value) {
+-				this.$myRequest({
+-					url: `nostalgia/article/article/${value.id}`,
+-					withToken: true,
+-					method: 'DELETE',
+-				}).then(res => {
+-					
+-					if (res.data.code == "200") {
+-						let idx = this.dataList.findIndex(item => item.id == value.id)
+-						this.dataList.splice(idx, 1)
+-					}
+-					else{
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+-					}
+-					
+-				})
++			async deleteFn(value) {
++				try {
++					await this.$myRequest({
++						url: `nostalgia/article/article/${value.id}`,
++						withToken: true,
++						method: 'DELETE',
++						noToast: true
++					});
++					let idx = this.dataList.findIndex(item => item.id == value.id)
++					this.dataList.splice(idx, 1)
++				} catch (res) {
++					this.tipMsg = res.data.msg;
++					this.$refs.elm.showDialog();
++				}
+ 			},
+ 			// 点赞
+-			praise(value) {
++			async praise(value) {
+ 				let obj = {
+ 					...value,
+ 
+@@ -145,29 +142,29 @@
+ 					url = 'nostalgia/article/praise'
+ 					obj.likeCount += 1
+ 				}
+-				this.$myRequest({
+-					url,
+-					data: {
+-						id: value.id,
+-						praiseType: "ARTICLE"
+-					},
+-					withToken: true,
+-					method: 'PUT',
+-				}).then(res => {
+-					if (res.data.code == "200") {
+-						obj.isLike = !value.isLike
+-						let idx = this.dataList.findIndex(item => item.id == obj.id)
+-						this.dataList.splice(idx, 1, obj)
+-					} else if(res.data.code == "10006"){
+-						console.log("报错了："+res.data.code)
+-						this.chilkLog=true;
+-					}
+-					else{
++				try {
++					const res = await this.$myRequest({
++						url,
++						data: {
++							id: value.id,
++							praiseType: "ARTICLE"
++						},
++						withToken: true,
++						method: 'PUT',
++						noToast: true
++					});
++					obj.isLike = !value.isLike
++					let idx = this.dataList.findIndex(item => item.id == obj.id)
++					this.dataList.splice(idx, 1, obj)
++				} catch (res) {
++					if (res.data.code == "10006") {
++						console.log("报错了：" + res.data.code)
++						this.chilkLog = true;
++					} else {
+ 						this.tipMsg = res.data.msg;
+ 						this.$refs.elm.showDialog();
+ 					}
+-
+-				})
++				}
+ 			},
+ 			// 接收父组件传过来的刷新列表要求
+ 			reload() {
+@@ -176,7 +173,7 @@
+ 					this.$refs.paging && this.$refs.paging.reload();
+ 				})
+ 			},
+-			queryList(pageNo, pageSize) {
++			async queryList(pageNo, pageSize) {
+ 				// 组件加载时会自动触发此方法，因此默认页面加载时会自动触发，无需手动调用
+ 				// 这里的pageNo和pageSize会自动计算好，直接传给服务器即可
+ 				// 模拟请求服务器获取分页数据，请替换成自己的网络请求
+@@ -192,24 +189,26 @@
+ 				} else {
+ 					params.tabType = "CITY"
+ 				}
+-				this.$myRequest({
+-					url: `/nostalgia/article/page`,
+-					data: params,
+-					withToken: true,
+-					method: 'GET',
+-				}).then(res => {
+-					if (res.data.code == 200) {
+-						let arr = res.data.data.rows.map(item => {
+-							return {
+-								...item,
+-								isDel: item.userId == this.userInfo != null ? this.userInfo.id : 0
+-							}
+-						})
+-						this.$refs.paging.complete(arr);
+-						setTimeout(() => {
+-							this.firstLoaded = true;
+-						}, 100)
+-					} else if (res.data.code == 10006) {
++				try {
++					const res = await this.$myRequest({
++						url: `/nostalgia/article/page`,
++						data: params,
++						withToken: true,
++						method: 'GET',
++						noToast: true
++					});
++					let arr = res.data.data.rows.map(item => {
++						return {
++							...item,
++							isDel: item.userId == this.userInfo != null ? this.userInfo.id : 0
++						}
++					})
++					this.$refs.paging.complete(arr);
++					setTimeout(() => {
++						this.firstLoaded = true;
++					}, 100)
++				} catch (res) {
++					if (res.data.code == 10006) {
+ 						let rows = [];
+ 						let arr = rows.map(item => {
+ 							return {
+@@ -221,7 +220,6 @@
+ 						setTimeout(() => {
+ 							this.firstLoaded = true;
+ 						}, 100)
+-
+ 					} else {
+ 						let rows = [];
+ 						let arr = rows.map(item => {
+@@ -236,14 +234,7 @@
+ 						}, 100)
+ 						console.log("请求失败")
+ 					}
+-				}).catch(res => {
+-					debugger
+-					// 如果请求失败写this.$refs.paging.complete(false);
+-					// 注意，每次都需要在catch中写这句话很麻烦，z-paging提供了方案可以全局统一处理
+-					// 在底层的网络请求抛出异常时，写uni.$emit('z-paging-error-emit');即可
+-					console.log("请求接口失败了")
+-					this.$refs.paging.complete(false);
+-				})
++				}
+ 			},
+ 			itemClick(item) {
+ 				console.log('点击了', item.title);
+@@ -296,21 +287,22 @@
+ 				// #endif
+ 			},
+ 			async setCode(code, resinfo) {
+-				const res = await this.$myRequest({
+-					url: 'token/wxAppletLogin',
+-					data: {
+-						code: code
+-					},
+-					method: 'POST'
+-				});
+-				console.log(res, 'delshoucang');
+-				var obj = {
+-					code: code,
+-					state: res.data.code,
+-					nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
+-				};
+-				uni.setStorageSync('verification', obj);
+-				if (res.data.code == 200) {
++				try {
++					const res = await this.$myRequest({
++						url: 'token/wxAppletLogin',
++						data: {
++							code: code
++						},
++						method: 'POST',
++						noToast: true
++					});
++					console.log(res, 'delshoucang');
++					var obj = {
++						code: code,
++						state: res.data.code,
++						nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
++					};
++					uni.setStorageSync('verification', obj);
+ 					this.isLoginPop = false;
+ 					this.isConfirm = true;
+ 					this.tipMsg = "登录成功";
+@@ -326,14 +318,16 @@
+ 					};
+ 					uni.setStorageSync('info', info);
+ 					uni.setStorageSync('token', res.data.data.token);
+-				} else if (res.data.code == 11002) {
+-					this.isLoginPop = false;
+-					uni.reLaunch({
+-						url: '/pagesintroduction/selfIntroduction?code=' + code
+-					});
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
++				} catch (res) {
++					if (res.data.code == 11002) {
++						this.isLoginPop = false;
++						uni.reLaunch({
++							url: '/pagesintroduction/selfIntroduction?code=' + code
++						});
++					} else {
++						this.tipMsg = res.data.msg;
++						this.$refs.elm.showDialog();
++					}
+ 				}
+ 			},
+ 			confirm() {
+diff --git a/uni-client/pages/tab/community.vue b/uni-client/pages/tab/community.vue
+index 6e6f526..91c2d72 100644
+--- a/uni-client/pages/tab/community.vue
++++ b/uni-client/pages/tab/community.vue
+@@ -148,35 +148,38 @@
+ 				this.current = e.detail.current;
+ 			},
+ 			// 获取未读消息数
+-			getNum() {
+-				this.$myRequest({
+-					url: `/nostalgia/articleMessage/unread`,
+-					withToken: true,
+-					method: 'GET',
+-				}).then(res => {
++			async getNum() {
++				try {
++					const res = await this.$myRequest({
++						url: `/nostalgia/articleMessage/unread`,
++						withToken: true,
++						method: 'GET',
++						noToast: true
++					});
+ 					this.num = res.data != null ? res.data.data : 0;
+-				})
++				} catch (e) {
++					this.num = 0;
++				}
+ 			},
+ 			// 删除
+-			deleteFn(value) {
+-				this.$myRequest({
+-					url: `nostalgia/article/article/${value.id}`,
+-					withToken: true,
+-					method: 'DELETE',
+-				}).then(res => {
+-					if (res.data.code == 200) {
+-						let idx = this.arr.findIndex(item => item.id == value.id)
+-						this.arr.splice(idx, 1)
+-						this.total -= 1
+-					} else {
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+-					}
+-
+-				})
++			async deleteFn(value) {
++				try {
++					await this.$myRequest({
++						url: `nostalgia/article/article/${value.id}`,
++						withToken: true,
++						method: 'DELETE',
++						noToast: true
++					});
++					let idx = this.arr.findIndex(item => item.id == value.id)
++					this.arr.splice(idx, 1)
++					this.total -= 1
++				} catch (res) {
++					this.tipMsg = res.data.msg;
++					this.$refs.elm.showDialog();
++				}
+ 			},
+ 			// 点赞
+-			praise(value) {
++			async praise(value) {
+ 				console.log("进来了")
+ 				let obj = {
+ 					...value,
+@@ -190,27 +193,25 @@
+ 					url = 'nostalgia/article/praise'
+ 					obj.likeCount += 1
+ 				}
+-				this.$myRequest({
+-					url,
+-					data: {
+-						id: value.id,
+-						praiseType: "ARTICLE"
+-					},
+-					withToken: true,
+-					method: 'PUT',
+-				}).then(res => {
+-					if (res.data.code == "200") {
+-						obj.isLike = !value.isLike
+-						let idx = this.arr.findIndex(item => item.id == obj.id)
+-						this.arr.splice(idx, 1, obj)
+-					} else {
+-						console.log(res.data.msg)
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+-						return;
+-					}
+-
+-				})
++				try {
++					const res = await this.$myRequest({
++						url,
++						data: {
++							id: value.id,
++							praiseType: "ARTICLE"
++						},
++						withToken: true,
++						method: 'PUT',
++						noToast: true
++					});
++					obj.isLike = !value.isLike
++					let idx = this.arr.findIndex(item => item.id == obj.id)
++					this.arr.splice(idx, 1, obj)
++				} catch (res) {
++					console.log(res.data.msg)
++					this.tipMsg = res.data.msg;
++					this.$refs.elm.showDialog();
++				}
+ 			},
+ 			onRefresh() {
+ 				this.getList(true)
+@@ -245,14 +246,16 @@
+ 				}
+ 
+ 			},
+-			getList(isFirst) {
++			async getList(isFirst) {
+ 				if (isFirst) this.params.pageIndex = 1
+-				this.$myRequest({
+-					url: `/nostalgia/article/page`,
+-					data: this.params,
+-					withToken: true,
+-					method: 'GET',
+-				}).then(res => {
++				try {
++					const res = await this.$myRequest({
++						url: `/nostalgia/article/page`,
++						data: this.params,
++						withToken: true,
++						method: 'GET',
++						noToast: true
++					});
+ 					this.total = res.data.data.totalCount
+ 					if (isFirst) this.arr = []
+ 					this.arr = [...this.arr, ...res.data.data.rows].map(item => {
+@@ -261,7 +264,9 @@
+ 							isDel: item.userId == this.userInfo.id
+ 						}
+ 					})
+-				})
++				} catch (e) {
++					// 静默失败
++				}
+ 			},
+ 			goMessage() {
+ 				if (uni.getStorageSync('info') != '') {
+@@ -319,21 +324,22 @@
+ 				// #endif
+ 			},
+ 			async setCode(code, resinfo) {
+-				const res = await this.$myRequest({
+-					url: 'token/wxAppletLogin',
+-					data: {
+-						code: code
+-					},
+-					method: 'POST'
+-				});
+-				console.log(res, 'delshoucang');
+-				var obj = {
+-					code: code,
+-					state: res.data.code,
+-					nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
+-				};
+-				uni.setStorageSync('verification', obj);
+-				if (res.data.code == 200) {
++				try {
++					const res = await this.$myRequest({
++						url: 'token/wxAppletLogin',
++						data: {
++							code: code
++						},
++						method: 'POST',
++						noToast: true
++					});
++					console.log(res, 'delshoucang');
++					var obj = {
++						code: code,
++						state: res.data.code,
++						nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
++					};
++					uni.setStorageSync('verification', obj);
+ 					this.isLoginPop = false;
+ 					this.isConfirm = true;
+ 					this.tipMsg = "登录成功";
+@@ -349,14 +355,16 @@
+ 					};
+ 					uni.setStorageSync('info', info);
+ 					uni.setStorageSync('token', res.data.data.token);
+-				} else if (res.data.code == 11002) {
+-					this.isLoginPop = false;
+-					uni.reLaunch({
+-						url: '/pagesintroduction/selfIntroduction?code=' + code
+-					});
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
++				} catch (res) {
++					if (res.data.code == 11002) {
++						this.isLoginPop = false;
++						uni.reLaunch({
++							url: '/pagesintroduction/selfIntroduction?code=' + code
++						});
++					} else {
++						this.tipMsg = res.data.msg;
++						this.$refs.elm.showDialog();
++					}
+ 				}
+ 			},
+ 			confirm() {
+diff --git a/uni-client/pages/tab/index.vue b/uni-client/pages/tab/index.vue
+index 8dd4cc8..a26f623 100644
+--- a/uni-client/pages/tab/index.vue
++++ b/uni-client/pages/tab/index.vue
+@@ -430,16 +430,21 @@
+ 		},
+ 		methods: {
+ 			async getUnRead() {
+-				const res = await this.$myRequest({
+-					url: `/message/un/read`,
+-					withToken: true,
+-					method: 'GET'
+-				});
+-				this.count = res.data.data
+-				uni.setTabBarBadge({ //显示数字
+-					index: 1, //tabbar下标
+-					text: `${res.data.data}` //数字
+-				})
++				try {
++					const res = await this.$myRequest({
++						url: `/message/un/read`,
++						withToken: true,
++						method: 'GET',
++						noToast: true
++					});
++					this.count = res.data.data
++					uni.setTabBarBadge({ //显示数字
++						index: 1, //tabbar下标
++						text: `${res.data.data}` //数字
++					})
++				} catch (e) {
++					// 静默失败
++				}
+ 			},
+ 			goTips() {
+ 				uni.navigateTo({
+@@ -482,42 +487,40 @@
+ 				}
+ 			},
+ 			//type 喜欢 true 还是 取消 false
+-			userIsLike(userId, type) {
++			async userIsLike(userId, type) {
+ 				console.log("开始匹配：" + userId)
+ 				this.showBtn = false;
+ 
+-				// 点击 取消 喜欢  根据返回结果展示
+-				this.$myRequest({
+-					url: 'nostalgia/usermatching/match',
+-					data: {
+-						otherUser: userId,
+-						result: type
+-					},
+-					withToken: true,
+-					method: 'POST'
+-				}).then(res => {
++				try {
++					// 点击 取消 喜欢  根据返回结果展示
++					const res = await this.$myRequest({
++						url: 'nostalgia/usermatching/match',
++						data: {
++							otherUser: userId,
++							result: type
++						},
++						withToken: true,
++						method: 'POST'
++					});
+ 					console.log("匹配结束1：" + userId)
+-					if (res.data.code == 200) {
+-						this.showAnima = true;
+-						setTimeout(() => {
+-							this.showAnima = false;
+-						}, 1000);
+-
+-						// 显示 相互 弹窗		this.showLikePop = true;
+-						if (res.data.data && res.data.data.result) {
+-							this.showLikePop = true;
+-							this.mutualInfo = res.data.data;
+-						} else {
+-							console.log("匹配结束2：" + userId)
+-							this.getRecUserInfo();
+-						}
+-
++					this.showAnima = true;
++					setTimeout(() => {
++						this.showAnima = false;
++					}, 1000);
++
++					// 显示 相互 弹窗		this.showLikePop = true;
++					if (res.data.data && res.data.data.result) {
++						this.showLikePop = true;
++						this.mutualInfo = res.data.data;
+ 					} else {
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+-						this.showBtn = true;
++						console.log("匹配结束2：" + userId)
++						this.getRecUserInfo();
+ 					}
+-				})
++				} catch (res) {
++					this.tipMsg = res.data.msg;
++					this.$refs.elm.showDialog();
++					this.showBtn = true;
++				}
+ 
+ 			},
+ 			async screen() {
+@@ -581,21 +584,22 @@
+ 				// #endif
+ 			},
+ 			async setCode(code, resinfo) {
+-				const res = await this.$myRequest({
+-					url: 'token/wxAppletLogin',
+-					data: {
+-						code: code
+-					},
+-					method: 'POST'
+-				});
+-				console.log(res, 'delshoucang');
+-				var obj = {
+-					code: code,
+-					state: res.data.code,
+-					nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
+-				};
+-				uni.setStorageSync('verification', obj);
+-				if (res.data.code == 200) {
++				try {
++					const res = await this.$myRequest({
++						url: 'token/wxAppletLogin',
++						data: {
++							code: code
++						},
++						method: 'POST',
++						noToast: true
++					});
++					console.log(res, 'delshoucang');
++					var obj = {
++						code: code,
++						state: res.data.code,
++						nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
++					};
++					uni.setStorageSync('verification', obj);
+ 					this.isLoginPop = false;
+ 					this.isConfirm = true;
+ 					this.tipMsg = "登录成功";
+@@ -611,17 +615,19 @@
+ 					};
+ 					uni.setStorageSync('info', info);
+ 					uni.setStorageSync('token', res.data.data.token);
+-				} else if (res.data.code == 11002) {
+-					this.isLoginPop = false;
+-					uni.reLaunch({
+-						url: '/pagesintroduction/selfIntroduction?code=' + code
+-					});
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
++				} catch (res) {
++					if (res.data.code == 11002) {
++						this.isLoginPop = false;
++						uni.reLaunch({
++							url: '/pagesintroduction/selfIntroduction?code=' + code
++						});
++					} else {
++						this.tipMsg = res.data.msg;
++						this.$refs.elm.showDialog();
++					}
+ 				}
+ 			},
+-			getRecUserInfo() {
++			async getRecUserInfo() {
+ 				console.log("开始获取用户信息")
+ 				// 获取推荐用户信息
+ 				let age = 20;
+@@ -631,49 +637,49 @@
+ 				let loginType;
+ 				uni.getStorageSync('token') ? (loginType = true) : (loginType = false);
+ 
+-				this.$myRequest({
+-					url: 'nostalgia/fruser/recommendUserInfo',
+-					withToken: loginType,
+-					data: {
+-						age,
+-						gender: this.gender == undefined ? "FEMALE" : this.gender
+-					},
+-					method: 'GET'
+-				}).then(res => {
++				try {
++					const res = await this.$myRequest({
++						url: 'nostalgia/fruser/recommendUserInfo',
++						withToken: loginType,
++						data: {
++							age,
++							gender: this.gender == undefined ? "FEMALE" : this.gender
++						},
++						method: 'GET',
++						noToast: true
++					});
+ 					console.log("获取用户信息完成")
+-					if (res.data.code == 200) {
+-						if (res.data.data == null) {
+-							this.showArrowDown = false;
+-							this.isInit = false;
+-							// this.data = [];
+-							this.userData = {};
+-							this.nextData = {};
+-							uni.setTabBarBadge({
+-								index: 0,
+-								text: '0'
+-							});
+-						} else {
+-							this.showArrowDown = true;
+-							this.isInit = true;
+-							this.userData = res.data.data;
+-							if(this.userData.userArticleViewResponse.articleImg.length>3){
+-								this.userData.userArticleViewResponse.articleImg = this.userData.userArticleViewResponse.articleImg.splice(0,3)
+-							}
+-							uni.setTabBarBadge({
+-								index: 0,
+-								text: `${res.data.data.surplusNum}`
+-							});
+-
+-							this.showBtn = true;
+-							console.log(
+-								`console.log("获取用户信息完成") 用户id${res.data.data.id}****剩余次数${res.data.data.surplusNum}`
+-							);
+-						}
++					if (res.data.data == null) {
++						this.showArrowDown = false;
++						this.isInit = false;
++						// this.data = [];
++						this.userData = {};
++						this.nextData = {};
++						uni.setTabBarBadge({
++							index: 0,
++							text: '0'
++						});
+ 					} else {
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
++						this.showArrowDown = true;
++						this.isInit = true;
++						this.userData = res.data.data;
++						if(this.userData.userArticleViewResponse.articleImg.length>3){
++							this.userData.userArticleViewResponse.articleImg = this.userData.userArticleViewResponse.articleImg.splice(0,3)
++						}
++						uni.setTabBarBadge({
++							index: 0,
++							text: `${res.data.data.surplusNum}`
++						});
++
++						this.showBtn = true;
++						console.log(
++							`console.log("获取用户信息完成") 用户id${res.data.data.id}****剩余次数${res.data.data.surplusNum}`
++						);
+ 					}
+-				})
++				} catch (res) {
++					this.tipMsg = res.data.msg;
++					this.$refs.elm.showDialog();
++				}
+ 			},
+ 			connectSocketInit: function() {
+ 				let self = this;
+diff --git a/uni-client/pages/tab/msg.vue b/uni-client/pages/tab/msg.vue
+index 4ccb77c..891f90d 100644
+--- a/uni-client/pages/tab/msg.vue
++++ b/uni-client/pages/tab/msg.vue
+@@ -139,32 +139,39 @@
+ 		},
+ 		methods: {
+ 			async getUnRead() {
+-				const res = await this.$myRequest({
+-					url: `/message/un/read`,
+-					withToken: true,
+-					method: 'GET'
+-				});
+-				this.count = res.data.data
+-				uni.setTabBarBadge({ //显示数字
+-					index: 1, //tabbar下标
+-					text: `${res.data.data}` //数字
+-				})
++				try {
++					const res = await this.$myRequest({
++						url: `/message/un/read`,
++						withToken: true,
++						method: 'GET',
++						noToast: true
++					});
++					this.count = res.data.data
++					uni.setTabBarBadge({ //显示数字
++						index: 1, //tabbar下标
++						text: `${res.data.data}` //数字
++					})
++				} catch (e) {
++					// 静默失败
++				}
+ 			},
+-			delClick({
++			async delClick({
+ 				index,
+ 				name
+ 			}) {
+ 				console.log(1111);
+ 				console.log(index);
+-				this.$myRequest({
+-					url: `/message/list/delete/${this.list[index].sendUserId}`,
+-					withToken: true,
+-					method: 'DELETE'
+-				}).then(res => {
++				try {
++					await this.$myRequest({
++						url: `/message/list/delete/${this.list[index].sendUserId}`,
++						withToken: true,
++						method: 'DELETE'
++					});
+ 					this.referesh()
+ 					this.status = 'close';
+-				})
+-
++				} catch (e) {
++					// 由 request.js 统一处理错误提示
++				}
+ 			},
+ 			actionClick(i) {
+ 				this.tipMsg = "开源版暂未开放，敬请期待！如需旗舰版，可联系作者微信（MMRWXM）咨询";
+@@ -180,30 +187,35 @@
+ 					}
+ 					
+ 				}
+-				const res = await this.$myRequest({
+-					url: `/message/list`,
+-					withToken: true,
+-					data: page,
+-					method: 'GET'
+-				});
+-				if (isReload) {
+-					this.list = res.data.data.rows;
+-				} else {
+-					this.list = this.list.concat(
+-						res.data.data.rows
+-					);
+-				}
+-				this.total = res.data.data.totalCount
+-				if (this.total <= 0) {
+-					this.isShow = true
+-				} else {
+-					this.isShow = false
++				try {
++					const res = await this.$myRequest({
++						url: `/message/list`,
++						withToken: true,
++						data: page,
++						method: 'GET',
++						noToast: true
++					});
++					if (isReload) {
++						this.list = res.data.data.rows;
++					} else {
++						this.list = this.list.concat(
++							res.data.data.rows
++						);
++					}
++					this.total = res.data.data.totalCount
++					if (this.total <= 0) {
++						this.isShow = true
++					} else {
++						this.isShow = false
++					}
++					this.key+=1
++					this.$nextTick(()=>{
++						this.$forceUpdate()
++					})
++					this.getUnRead();
++				} catch (res) {
++					// 静默失败，不显示 toast
+ 				}
+-				this.key+=1
+-				this.$nextTick(()=>{
+-					this.$forceUpdate()
+-				})
+-				this.getUnRead();
+ 			},
+ 			connectSocketInit: function() {
+ 				let self = this;
+@@ -371,21 +383,22 @@
+ 			async setCode(code, resinfo) {
+ 			
+ 				console.log(code)
+-				const res = await this.$myRequest({
+-					url: 'token/wxAppletLogin',
+-					data: {
+-						code: code
+-					},
+-					method: 'POST',
+-				});
+-				console.log(res, 'delshoucang');
+-				var obj = {
+-					code: code,
+-					state: res.data.code,
+-					nickName: resinfo!='null'?resinfo.userInfo.nickName:"匿名用户"
+-				}
+-				uni.setStorageSync('verification', obj);
+-				if (res.data.code == 200) {
++				try {
++					const res = await this.$myRequest({
++						url: 'token/wxAppletLogin',
++						data: {
++							code: code
++						},
++						method: 'POST',
++						noToast: true
++					});
++					console.log(res, 'delshoucang');
++					var obj = {
++						code: code,
++						state: res.data.code,
++						nickName: resinfo!='null'?resinfo.userInfo.nickName:"匿名用户"
++					}
++					uni.setStorageSync('verification', obj);
+ 					this.tipMsg = "登录成功";
+ 					this.$refs.elm.showDialog();
+ 					
+@@ -402,14 +415,15 @@
+ 					this.ownerId = res.data.data.info.id;
+ 					this.getMsgList(true);
+ 					this.connectSocketInit();
+-				} else if (res.data.code == 11002) {
+-			
+-					uni.reLaunch({
+-						url: "/pagesintroduction/selfIntroduction?code=" + code
+-					})
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
++				} catch (res) {
++					if (res.data.code == 11002) {
++						uni.reLaunch({
++							url: "/pagesintroduction/selfIntroduction?code=" + code
++						})
++					} else {
++						this.tipMsg = res.data.msg;
++						this.$refs.elm.showDialog();
++					}
+ 				}
+ 			},
+ 			generateRandomString(length) {
+diff --git a/uni-client/pages/tab/my.vue b/uni-client/pages/tab/my.vue
+index fb7282d..5908a8a 100644
+--- a/uni-client/pages/tab/my.vue
++++ b/uni-client/pages/tab/my.vue
+@@ -253,15 +253,20 @@
+ 				})
+ 			},
+ 			async getUnRead() {
+-				const res = await this.$myRequest({
+-					url: `/message/un/read`,
+-					withToken: true,
+-					method: 'GET'
+-				});
+-				uni.setTabBarBadge({ //显示数字
+-					index: 1, //tabbar下标
+-					text: `${res.data.data}` //数字
+-				})
++				try {
++					const res = await this.$myRequest({
++						url: `/message/un/read`,
++						withToken: true,
++						method: 'GET',
++						noToast: true
++					});
++					uni.setTabBarBadge({ //显示数字
++						index: 1, //tabbar下标
++						text: `${res.data.data}` //数字
++					})
++				} catch (e) {
++					// 静默失败
++				}
+ 			},
+ 			gotolike(type) { //喜欢三个列表页面
+ 				console.log("进来了")
+@@ -335,21 +340,22 @@
+ 			async setCode(code, resinfo) {
+ 
+ 				console.log(code)
+-				const res = await this.$myRequest({
+-					url: 'token/wxAppletLogin',
+-					data: {
+-						code: code
+-					},
+-					method: 'POST',
+-				});
+-				console.log(res, 'delshoucang');
+-				var obj = {
+-					code: code,
+-					state: res.data.code,
+-					nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
+-				}
+-				uni.setStorageSync('verification', obj);
+-				if (res.data.code == 200) {
++				try {
++					const res = await this.$myRequest({
++						url: 'token/wxAppletLogin',
++						data: {
++							code: code
++						},
++						method: 'POST',
++						noToast: true
++					});
++					console.log(res, 'delshoucang');
++					var obj = {
++						code: code,
++						state: res.data.code,
++						nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
++					}
++					uni.setStorageSync('verification', obj);
+ 					this.tipMsg = "登录成功";
+ 					this.$refs.elm.showDialog();
+ 					var info = {
+@@ -366,24 +372,26 @@
+ 					this.getUnRead()
+ 					this.ownerId = res.data.data.info.id;
+ 					this.connectSocketInit();
+-				} else if (res.data.code == 11002) {
+-
+-					uni.reLaunch({
+-						url: "/pagesintroduction/selfIntroduction?code=" + code
+-					})
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
++				} catch (res) {
++					if (res.data.code == 11002) {
++						uni.reLaunch({
++							url: "/pagesintroduction/selfIntroduction?code=" + code
++						})
++					} else {
++						this.tipMsg = res.data.msg;
++						this.$refs.elm.showDialog();
++					}
+ 				}
+ 			},
+ 
+ 			async personalCenter() {
+-				const res = await this.$myRequest({
+-					url: '/nostalgia/fruser/personalCenter',
+-					withToken: true,
+-					method: 'GET',
+-				});
+-				if (res.data.code == 200) {
++				try {
++					const res = await this.$myRequest({
++						url: '/nostalgia/fruser/personalCenter',
++						withToken: true,
++						method: 'GET',
++						noToast: true
++					});
+ 					this.info = res.data.data
+ 					if(this.info.userArticleViewResponse.articleImg.length>3){
+ 						this.info.userArticleViewResponse.articleImg = this.info.userArticleViewResponse.articleImg.splice(0,3)
+@@ -402,7 +410,7 @@
+ 						this.dataflag = true
+ 					}
+ 					this.nologin = false
+-				} else {
++				} catch (res) {
+ 					this.tipMsg = res.data.msg;
+ 					this.$refs.elm.showDialog();
+ 
+diff --git a/uni-client/util/api.js b/uni-client/util/api.js
+index ec0e789..efa2675 100644
+--- a/uni-client/util/api.js
++++ b/uni-client/util/api.js
+@@ -34,7 +34,7 @@ export const myRequest = (options) => {
+ 			method: options.method || "GET",
+ 			data: options.data || {},
+ 			header: {
+-				Authorization:options.withToken? uni.getStorageSync("token"):'',
++				Authorization:options.withToken? uni.getStorageSync('token'):'',
+ 			},
+ 			success: (res) => {
+ 				if (res.data.code == 2) {
+@@ -48,13 +48,31 @@ export const myRequest = (options) => {
+ 							url:"/pages/tab/index"
+ 						})
+ 					}, 200);
++					reject(res);
++					return;
+ 				}
++				
++				if (res.data.code != 200) {
++					if (!options.noToast) {
++						uni.showToast({
++							icon: 'none',
++							title: res.data.msg || '请求失败',
++							duration: 2000
++						});
++					}
++					reject(res);
++					return;
++				}
++				
+ 				resolve(res);
+ 			},
+ 			fail: (err) => {
+-				uni.showToast({
+-					title: "请求接口失败",
+-				});
++				if (!options.noToast) {
++					uni.showToast({
++						icon: 'none',
++						title: "请求接口失败",
++					});
++				}
+ 				reject(err);
+ 			},
+ 			complete() {

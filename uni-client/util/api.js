@@ -34,7 +34,7 @@ export const myRequest = (options) => {
 			method: options.method || "GET",
 			data: options.data || {},
 			header: {
-				Authorization:options.withToken? uni.getStorageSync("token"):'',
+				Authorization:options.withToken? uni.getStorageSync('token'):'',
 			},
 			success: (res) => {
 				if (res.data.code == 2) {
@@ -48,13 +48,31 @@ export const myRequest = (options) => {
 							url:"/pages/tab/index"
 						})
 					}, 200);
+					reject(res);
+					return;
 				}
+				
+				if (res.data.code != 200) {
+					if (!options.noToast) {
+						uni.showToast({
+							icon: 'none',
+							title: res.data.msg || '请求失败',
+							duration: 2000
+						});
+					}
+					reject(res);
+					return;
+				}
+				
 				resolve(res);
 			},
 			fail: (err) => {
-				uni.showToast({
-					title: "请求接口失败",
-				});
+				if (!options.noToast) {
+					uni.showToast({
+						icon: 'none',
+						title: "请求接口失败",
+					});
+				}
 				reject(err);
 			},
 			complete() {

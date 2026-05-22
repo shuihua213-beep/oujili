@@ -430,16 +430,21 @@
 		},
 		methods: {
 			async getUnRead() {
-				const res = await this.$myRequest({
-					url: `/message/un/read`,
-					withToken: true,
-					method: 'GET'
-				});
-				this.count = res.data.data
-				uni.setTabBarBadge({ //显示数字
-					index: 1, //tabbar下标
-					text: `${res.data.data}` //数字
-				})
+				try {
+					const res = await this.$myRequest({
+						url: `/message/un/read`,
+						withToken: true,
+						method: 'GET',
+						noToast: true
+					});
+					this.count = res.data.data
+					uni.setTabBarBadge({ //显示数字
+						index: 1, //tabbar下标
+						text: `${res.data.data}` //数字
+					})
+				} catch (e) {
+					// 静默失败
+				}
 			},
 			goTips() {
 				uni.navigateTo({
@@ -482,42 +487,40 @@
 				}
 			},
 			//type 喜欢 true 还是 取消 false
-			userIsLike(userId, type) {
+			async userIsLike(userId, type) {
 				console.log("开始匹配：" + userId)
 				this.showBtn = false;
 
-				// 点击 取消 喜欢  根据返回结果展示
-				this.$myRequest({
-					url: 'nostalgia/usermatching/match',
-					data: {
-						otherUser: userId,
-						result: type
-					},
-					withToken: true,
-					method: 'POST'
-				}).then(res => {
+				try {
+					// 点击 取消 喜欢  根据返回结果展示
+					const res = await this.$myRequest({
+						url: 'nostalgia/usermatching/match',
+						data: {
+							otherUser: userId,
+							result: type
+						},
+						withToken: true,
+						method: 'POST'
+					});
 					console.log("匹配结束1：" + userId)
-					if (res.data.code == 200) {
-						this.showAnima = true;
-						setTimeout(() => {
-							this.showAnima = false;
-						}, 1000);
+					this.showAnima = true;
+					setTimeout(() => {
+						this.showAnima = false;
+					}, 1000);
 
-						// 显示 相互 弹窗		this.showLikePop = true;
-						if (res.data.data && res.data.data.result) {
-							this.showLikePop = true;
-							this.mutualInfo = res.data.data;
-						} else {
-							console.log("匹配结束2：" + userId)
-							this.getRecUserInfo();
-						}
-
+					// 显示 相互 弹窗		this.showLikePop = true;
+					if (res.data.data && res.data.data.result) {
+						this.showLikePop = true;
+						this.mutualInfo = res.data.data;
 					} else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
-						this.showBtn = true;
+						console.log("匹配结束2：" + userId)
+						this.getRecUserInfo();
 					}
-				})
+				} catch (res) {
+					this.tipMsg = res.data.msg;
+					this.$refs.elm.showDialog();
+					this.showBtn = true;
+				}
 
 			},
 			async screen() {
@@ -581,21 +584,22 @@
 				// #endif
 			},
 			async setCode(code, resinfo) {
-				const res = await this.$myRequest({
-					url: 'token/wxAppletLogin',
-					data: {
-						code: code
-					},
-					method: 'POST'
-				});
-				console.log(res, 'delshoucang');
-				var obj = {
-					code: code,
-					state: res.data.code,
-					nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
-				};
-				uni.setStorageSync('verification', obj);
-				if (res.data.code == 200) {
+				try {
+					const res = await this.$myRequest({
+						url: 'token/wxAppletLogin',
+						data: {
+							code: code
+						},
+						method: 'POST',
+						noToast: true
+					});
+					console.log(res, 'delshoucang');
+					var obj = {
+						code: code,
+						state: res.data.code,
+						nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
+					};
+					uni.setStorageSync('verification', obj);
 					this.isLoginPop = false;
 					this.isConfirm = true;
 					this.tipMsg = "登录成功";
@@ -611,17 +615,19 @@
 					};
 					uni.setStorageSync('info', info);
 					uni.setStorageSync('token', res.data.data.token);
-				} else if (res.data.code == 11002) {
-					this.isLoginPop = false;
-					uni.reLaunch({
-						url: '/pagesintroduction/selfIntroduction?code=' + code
-					});
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
+				} catch (res) {
+					if (res.data.code == 11002) {
+						this.isLoginPop = false;
+						uni.reLaunch({
+							url: '/pagesintroduction/selfIntroduction?code=' + code
+						});
+					} else {
+						this.tipMsg = res.data.msg;
+						this.$refs.elm.showDialog();
+					}
 				}
 			},
-			getRecUserInfo() {
+			async getRecUserInfo() {
 				console.log("开始获取用户信息")
 				// 获取推荐用户信息
 				let age = 20;
@@ -631,49 +637,49 @@
 				let loginType;
 				uni.getStorageSync('token') ? (loginType = true) : (loginType = false);
 
-				this.$myRequest({
-					url: 'nostalgia/fruser/recommendUserInfo',
-					withToken: loginType,
-					data: {
-						age,
-						gender: this.gender == undefined ? "FEMALE" : this.gender
-					},
-					method: 'GET'
-				}).then(res => {
+				try {
+					const res = await this.$myRequest({
+						url: 'nostalgia/fruser/recommendUserInfo',
+						withToken: loginType,
+						data: {
+							age,
+							gender: this.gender == undefined ? "FEMALE" : this.gender
+						},
+						method: 'GET',
+						noToast: true
+					});
 					console.log("获取用户信息完成")
-					if (res.data.code == 200) {
-						if (res.data.data == null) {
-							this.showArrowDown = false;
-							this.isInit = false;
-							// this.data = [];
-							this.userData = {};
-							this.nextData = {};
-							uni.setTabBarBadge({
-								index: 0,
-								text: '0'
-							});
-						} else {
-							this.showArrowDown = true;
-							this.isInit = true;
-							this.userData = res.data.data;
-							if(this.userData.userArticleViewResponse.articleImg.length>3){
-								this.userData.userArticleViewResponse.articleImg = this.userData.userArticleViewResponse.articleImg.splice(0,3)
-							}
-							uni.setTabBarBadge({
-								index: 0,
-								text: `${res.data.data.surplusNum}`
-							});
-
-							this.showBtn = true;
-							console.log(
-								`console.log("获取用户信息完成") 用户id${res.data.data.id}****剩余次数${res.data.data.surplusNum}`
-							);
-						}
+					if (res.data.data == null) {
+						this.showArrowDown = false;
+						this.isInit = false;
+						// this.data = [];
+						this.userData = {};
+						this.nextData = {};
+						uni.setTabBarBadge({
+							index: 0,
+							text: '0'
+						});
 					} else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
+						this.showArrowDown = true;
+						this.isInit = true;
+						this.userData = res.data.data;
+						if(this.userData.userArticleViewResponse.articleImg.length>3){
+							this.userData.userArticleViewResponse.articleImg = this.userData.userArticleViewResponse.articleImg.splice(0,3)
+						}
+						uni.setTabBarBadge({
+							index: 0,
+							text: `${res.data.data.surplusNum}`
+						});
+
+						this.showBtn = true;
+						console.log(
+							`console.log("获取用户信息完成") 用户id${res.data.data.id}****剩余次数${res.data.data.surplusNum}`
+						);
 					}
-				})
+				} catch (res) {
+					this.tipMsg = res.data.msg;
+					this.$refs.elm.showDialog();
+				}
 			},
 			connectSocketInit: function() {
 				let self = this;

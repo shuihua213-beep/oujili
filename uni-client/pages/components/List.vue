@@ -113,26 +113,23 @@
 				this.$emit("selectShare", item)
 			},
 			// 删除
-			deleteFn(value) {
-				this.$myRequest({
-					url: `nostalgia/article/article/${value.id}`,
-					withToken: true,
-					method: 'DELETE',
-				}).then(res => {
-					
-					if (res.data.code == "200") {
-						let idx = this.dataList.findIndex(item => item.id == value.id)
-						this.dataList.splice(idx, 1)
-					}
-					else{
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
-					}
-					
-				})
+			async deleteFn(value) {
+				try {
+					await this.$myRequest({
+						url: `nostalgia/article/article/${value.id}`,
+						withToken: true,
+						method: 'DELETE',
+						noToast: true
+					});
+					let idx = this.dataList.findIndex(item => item.id == value.id)
+					this.dataList.splice(idx, 1)
+				} catch (res) {
+					this.tipMsg = res.data.msg;
+					this.$refs.elm.showDialog();
+				}
 			},
 			// 点赞
-			praise(value) {
+			async praise(value) {
 				let obj = {
 					...value,
 
@@ -145,29 +142,29 @@
 					url = 'nostalgia/article/praise'
 					obj.likeCount += 1
 				}
-				this.$myRequest({
-					url,
-					data: {
-						id: value.id,
-						praiseType: "ARTICLE"
-					},
-					withToken: true,
-					method: 'PUT',
-				}).then(res => {
-					if (res.data.code == "200") {
-						obj.isLike = !value.isLike
-						let idx = this.dataList.findIndex(item => item.id == obj.id)
-						this.dataList.splice(idx, 1, obj)
-					} else if(res.data.code == "10006"){
-						console.log("报错了："+res.data.code)
-						this.chilkLog=true;
-					}
-					else{
+				try {
+					const res = await this.$myRequest({
+						url,
+						data: {
+							id: value.id,
+							praiseType: "ARTICLE"
+						},
+						withToken: true,
+						method: 'PUT',
+						noToast: true
+					});
+					obj.isLike = !value.isLike
+					let idx = this.dataList.findIndex(item => item.id == obj.id)
+					this.dataList.splice(idx, 1, obj)
+				} catch (res) {
+					if (res.data.code == "10006") {
+						console.log("报错了：" + res.data.code)
+						this.chilkLog = true;
+					} else {
 						this.tipMsg = res.data.msg;
 						this.$refs.elm.showDialog();
 					}
-
-				})
+				}
 			},
 			// 接收父组件传过来的刷新列表要求
 			reload() {
@@ -176,7 +173,7 @@
 					this.$refs.paging && this.$refs.paging.reload();
 				})
 			},
-			queryList(pageNo, pageSize) {
+			async queryList(pageNo, pageSize) {
 				// 组件加载时会自动触发此方法，因此默认页面加载时会自动触发，无需手动调用
 				// 这里的pageNo和pageSize会自动计算好，直接传给服务器即可
 				// 模拟请求服务器获取分页数据，请替换成自己的网络请求
@@ -192,24 +189,26 @@
 				} else {
 					params.tabType = "CITY"
 				}
-				this.$myRequest({
-					url: `/nostalgia/article/page`,
-					data: params,
-					withToken: true,
-					method: 'GET',
-				}).then(res => {
-					if (res.data.code == 200) {
-						let arr = res.data.data.rows.map(item => {
-							return {
-								...item,
-								isDel: item.userId == this.userInfo != null ? this.userInfo.id : 0
-							}
-						})
-						this.$refs.paging.complete(arr);
-						setTimeout(() => {
-							this.firstLoaded = true;
-						}, 100)
-					} else if (res.data.code == 10006) {
+				try {
+					const res = await this.$myRequest({
+						url: `/nostalgia/article/page`,
+						data: params,
+						withToken: true,
+						method: 'GET',
+						noToast: true
+					});
+					let arr = res.data.data.rows.map(item => {
+						return {
+							...item,
+							isDel: item.userId == this.userInfo != null ? this.userInfo.id : 0
+						}
+					})
+					this.$refs.paging.complete(arr);
+					setTimeout(() => {
+						this.firstLoaded = true;
+					}, 100)
+				} catch (res) {
+					if (res.data.code == 10006) {
 						let rows = [];
 						let arr = rows.map(item => {
 							return {
@@ -221,7 +220,6 @@
 						setTimeout(() => {
 							this.firstLoaded = true;
 						}, 100)
-
 					} else {
 						let rows = [];
 						let arr = rows.map(item => {
@@ -236,14 +234,7 @@
 						}, 100)
 						console.log("请求失败")
 					}
-				}).catch(res => {
-					debugger
-					// 如果请求失败写this.$refs.paging.complete(false);
-					// 注意，每次都需要在catch中写这句话很麻烦，z-paging提供了方案可以全局统一处理
-					// 在底层的网络请求抛出异常时，写uni.$emit('z-paging-error-emit');即可
-					console.log("请求接口失败了")
-					this.$refs.paging.complete(false);
-				})
+				}
 			},
 			itemClick(item) {
 				console.log('点击了', item.title);
@@ -296,21 +287,22 @@
 				// #endif
 			},
 			async setCode(code, resinfo) {
-				const res = await this.$myRequest({
-					url: 'token/wxAppletLogin',
-					data: {
-						code: code
-					},
-					method: 'POST'
-				});
-				console.log(res, 'delshoucang');
-				var obj = {
-					code: code,
-					state: res.data.code,
-					nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
-				};
-				uni.setStorageSync('verification', obj);
-				if (res.data.code == 200) {
+				try {
+					const res = await this.$myRequest({
+						url: 'token/wxAppletLogin',
+						data: {
+							code: code
+						},
+						method: 'POST',
+						noToast: true
+					});
+					console.log(res, 'delshoucang');
+					var obj = {
+						code: code,
+						state: res.data.code,
+						nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
+					};
+					uni.setStorageSync('verification', obj);
 					this.isLoginPop = false;
 					this.isConfirm = true;
 					this.tipMsg = "登录成功";
@@ -326,14 +318,16 @@
 					};
 					uni.setStorageSync('info', info);
 					uni.setStorageSync('token', res.data.data.token);
-				} else if (res.data.code == 11002) {
-					this.isLoginPop = false;
-					uni.reLaunch({
-						url: '/pagesintroduction/selfIntroduction?code=' + code
-					});
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
+				} catch (res) {
+					if (res.data.code == 11002) {
+						this.isLoginPop = false;
+						uni.reLaunch({
+							url: '/pagesintroduction/selfIntroduction?code=' + code
+						});
+					} else {
+						this.tipMsg = res.data.msg;
+						this.$refs.elm.showDialog();
+					}
 				}
 			},
 			confirm() {

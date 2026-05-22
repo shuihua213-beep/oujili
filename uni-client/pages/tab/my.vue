@@ -253,15 +253,20 @@
 				})
 			},
 			async getUnRead() {
-				const res = await this.$myRequest({
-					url: `/message/un/read`,
-					withToken: true,
-					method: 'GET'
-				});
-				uni.setTabBarBadge({ //显示数字
-					index: 1, //tabbar下标
-					text: `${res.data.data}` //数字
-				})
+				try {
+					const res = await this.$myRequest({
+						url: `/message/un/read`,
+						withToken: true,
+						method: 'GET',
+						noToast: true
+					});
+					uni.setTabBarBadge({ //显示数字
+						index: 1, //tabbar下标
+						text: `${res.data.data}` //数字
+					})
+				} catch (e) {
+					// 静默失败
+				}
 			},
 			gotolike(type) { //喜欢三个列表页面
 				console.log("进来了")
@@ -335,21 +340,22 @@
 			async setCode(code, resinfo) {
 
 				console.log(code)
-				const res = await this.$myRequest({
-					url: 'token/wxAppletLogin',
-					data: {
-						code: code
-					},
-					method: 'POST',
-				});
-				console.log(res, 'delshoucang');
-				var obj = {
-					code: code,
-					state: res.data.code,
-					nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
-				}
-				uni.setStorageSync('verification', obj);
-				if (res.data.code == 200) {
+				try {
+					const res = await this.$myRequest({
+						url: 'token/wxAppletLogin',
+						data: {
+							code: code
+						},
+						method: 'POST',
+						noToast: true
+					});
+					console.log(res, 'delshoucang');
+					var obj = {
+						code: code,
+						state: res.data.code,
+						nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
+					}
+					uni.setStorageSync('verification', obj);
 					this.tipMsg = "登录成功";
 					this.$refs.elm.showDialog();
 					var info = {
@@ -366,24 +372,26 @@
 					this.getUnRead()
 					this.ownerId = res.data.data.info.id;
 					this.connectSocketInit();
-				} else if (res.data.code == 11002) {
-
-					uni.reLaunch({
-						url: "/pagesintroduction/selfIntroduction?code=" + code
-					})
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
+				} catch (res) {
+					if (res.data.code == 11002) {
+						uni.reLaunch({
+							url: "/pagesintroduction/selfIntroduction?code=" + code
+						})
+					} else {
+						this.tipMsg = res.data.msg;
+						this.$refs.elm.showDialog();
+					}
 				}
 			},
 
 			async personalCenter() {
-				const res = await this.$myRequest({
-					url: '/nostalgia/fruser/personalCenter',
-					withToken: true,
-					method: 'GET',
-				});
-				if (res.data.code == 200) {
+				try {
+					const res = await this.$myRequest({
+						url: '/nostalgia/fruser/personalCenter',
+						withToken: true,
+						method: 'GET',
+						noToast: true
+					});
 					this.info = res.data.data
 					if(this.info.userArticleViewResponse.articleImg.length>3){
 						this.info.userArticleViewResponse.articleImg = this.info.userArticleViewResponse.articleImg.splice(0,3)
@@ -402,7 +410,7 @@
 						this.dataflag = true
 					}
 					this.nologin = false
-				} else {
+				} catch (res) {
 					this.tipMsg = res.data.msg;
 					this.$refs.elm.showDialog();
 

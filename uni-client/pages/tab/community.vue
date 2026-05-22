@@ -148,35 +148,38 @@
 				this.current = e.detail.current;
 			},
 			// 获取未读消息数
-			getNum() {
-				this.$myRequest({
-					url: `/nostalgia/articleMessage/unread`,
-					withToken: true,
-					method: 'GET',
-				}).then(res => {
+			async getNum() {
+				try {
+					const res = await this.$myRequest({
+						url: `/nostalgia/articleMessage/unread`,
+						withToken: true,
+						method: 'GET',
+						noToast: true
+					});
 					this.num = res.data != null ? res.data.data : 0;
-				})
+				} catch (e) {
+					this.num = 0;
+				}
 			},
 			// 删除
-			deleteFn(value) {
-				this.$myRequest({
-					url: `nostalgia/article/article/${value.id}`,
-					withToken: true,
-					method: 'DELETE',
-				}).then(res => {
-					if (res.data.code == 200) {
-						let idx = this.arr.findIndex(item => item.id == value.id)
-						this.arr.splice(idx, 1)
-						this.total -= 1
-					} else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
-					}
-
-				})
+			async deleteFn(value) {
+				try {
+					await this.$myRequest({
+						url: `nostalgia/article/article/${value.id}`,
+						withToken: true,
+						method: 'DELETE',
+						noToast: true
+					});
+					let idx = this.arr.findIndex(item => item.id == value.id)
+					this.arr.splice(idx, 1)
+					this.total -= 1
+				} catch (res) {
+					this.tipMsg = res.data.msg;
+					this.$refs.elm.showDialog();
+				}
 			},
 			// 点赞
-			praise(value) {
+			async praise(value) {
 				console.log("进来了")
 				let obj = {
 					...value,
@@ -190,27 +193,25 @@
 					url = 'nostalgia/article/praise'
 					obj.likeCount += 1
 				}
-				this.$myRequest({
-					url,
-					data: {
-						id: value.id,
-						praiseType: "ARTICLE"
-					},
-					withToken: true,
-					method: 'PUT',
-				}).then(res => {
-					if (res.data.code == "200") {
-						obj.isLike = !value.isLike
-						let idx = this.arr.findIndex(item => item.id == obj.id)
-						this.arr.splice(idx, 1, obj)
-					} else {
-						console.log(res.data.msg)
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
-						return;
-					}
-
-				})
+				try {
+					const res = await this.$myRequest({
+						url,
+						data: {
+							id: value.id,
+							praiseType: "ARTICLE"
+						},
+						withToken: true,
+						method: 'PUT',
+						noToast: true
+					});
+					obj.isLike = !value.isLike
+					let idx = this.arr.findIndex(item => item.id == obj.id)
+					this.arr.splice(idx, 1, obj)
+				} catch (res) {
+					console.log(res.data.msg)
+					this.tipMsg = res.data.msg;
+					this.$refs.elm.showDialog();
+				}
 			},
 			onRefresh() {
 				this.getList(true)
@@ -245,14 +246,16 @@
 				}
 
 			},
-			getList(isFirst) {
+			async getList(isFirst) {
 				if (isFirst) this.params.pageIndex = 1
-				this.$myRequest({
-					url: `/nostalgia/article/page`,
-					data: this.params,
-					withToken: true,
-					method: 'GET',
-				}).then(res => {
+				try {
+					const res = await this.$myRequest({
+						url: `/nostalgia/article/page`,
+						data: this.params,
+						withToken: true,
+						method: 'GET',
+						noToast: true
+					});
 					this.total = res.data.data.totalCount
 					if (isFirst) this.arr = []
 					this.arr = [...this.arr, ...res.data.data.rows].map(item => {
@@ -261,7 +264,9 @@
 							isDel: item.userId == this.userInfo.id
 						}
 					})
-				})
+				} catch (e) {
+					// 静默失败
+				}
 			},
 			goMessage() {
 				if (uni.getStorageSync('info') != '') {
@@ -319,21 +324,22 @@
 				// #endif
 			},
 			async setCode(code, resinfo) {
-				const res = await this.$myRequest({
-					url: 'token/wxAppletLogin',
-					data: {
-						code: code
-					},
-					method: 'POST'
-				});
-				console.log(res, 'delshoucang');
-				var obj = {
-					code: code,
-					state: res.data.code,
-					nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
-				};
-				uni.setStorageSync('verification', obj);
-				if (res.data.code == 200) {
+				try {
+					const res = await this.$myRequest({
+						url: 'token/wxAppletLogin',
+						data: {
+							code: code
+						},
+						method: 'POST',
+						noToast: true
+					});
+					console.log(res, 'delshoucang');
+					var obj = {
+						code: code,
+						state: res.data.code,
+						nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
+					};
+					uni.setStorageSync('verification', obj);
 					this.isLoginPop = false;
 					this.isConfirm = true;
 					this.tipMsg = "登录成功";
@@ -349,14 +355,16 @@
 					};
 					uni.setStorageSync('info', info);
 					uni.setStorageSync('token', res.data.data.token);
-				} else if (res.data.code == 11002) {
-					this.isLoginPop = false;
-					uni.reLaunch({
-						url: '/pagesintroduction/selfIntroduction?code=' + code
-					});
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
+				} catch (res) {
+					if (res.data.code == 11002) {
+						this.isLoginPop = false;
+						uni.reLaunch({
+							url: '/pagesintroduction/selfIntroduction?code=' + code
+						});
+					} else {
+						this.tipMsg = res.data.msg;
+						this.$refs.elm.showDialog();
+					}
 				}
 			},
 			confirm() {

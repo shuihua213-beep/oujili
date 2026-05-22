@@ -139,32 +139,39 @@
 		},
 		methods: {
 			async getUnRead() {
-				const res = await this.$myRequest({
-					url: `/message/un/read`,
-					withToken: true,
-					method: 'GET'
-				});
-				this.count = res.data.data
-				uni.setTabBarBadge({ //显示数字
-					index: 1, //tabbar下标
-					text: `${res.data.data}` //数字
-				})
+				try {
+					const res = await this.$myRequest({
+						url: `/message/un/read`,
+						withToken: true,
+						method: 'GET',
+						noToast: true
+					});
+					this.count = res.data.data
+					uni.setTabBarBadge({ //显示数字
+						index: 1, //tabbar下标
+						text: `${res.data.data}` //数字
+					})
+				} catch (e) {
+					// 静默失败
+				}
 			},
-			delClick({
+			async delClick({
 				index,
 				name
 			}) {
 				console.log(1111);
 				console.log(index);
-				this.$myRequest({
-					url: `/message/list/delete/${this.list[index].sendUserId}`,
-					withToken: true,
-					method: 'DELETE'
-				}).then(res => {
+				try {
+					await this.$myRequest({
+						url: `/message/list/delete/${this.list[index].sendUserId}`,
+						withToken: true,
+						method: 'DELETE'
+					});
 					this.referesh()
 					this.status = 'close';
-				})
-
+				} catch (e) {
+					// 由 request.js 统一处理错误提示
+				}
 			},
 			actionClick(i) {
 				this.tipMsg = "开源版暂未开放，敬请期待！如需旗舰版，可联系作者微信（MMRWXM）咨询";
@@ -180,30 +187,35 @@
 					}
 					
 				}
-				const res = await this.$myRequest({
-					url: `/message/list`,
-					withToken: true,
-					data: page,
-					method: 'GET'
-				});
-				if (isReload) {
-					this.list = res.data.data.rows;
-				} else {
-					this.list = this.list.concat(
-						res.data.data.rows
-					);
+				try {
+					const res = await this.$myRequest({
+						url: `/message/list`,
+						withToken: true,
+						data: page,
+						method: 'GET',
+						noToast: true
+					});
+					if (isReload) {
+						this.list = res.data.data.rows;
+					} else {
+						this.list = this.list.concat(
+							res.data.data.rows
+						);
+					}
+					this.total = res.data.data.totalCount
+					if (this.total <= 0) {
+						this.isShow = true
+					} else {
+						this.isShow = false
+					}
+					this.key+=1
+					this.$nextTick(()=>{
+						this.$forceUpdate()
+					})
+					this.getUnRead();
+				} catch (res) {
+					// 静默失败，不显示 toast
 				}
-				this.total = res.data.data.totalCount
-				if (this.total <= 0) {
-					this.isShow = true
-				} else {
-					this.isShow = false
-				}
-				this.key+=1
-				this.$nextTick(()=>{
-					this.$forceUpdate()
-				})
-				this.getUnRead();
 			},
 			connectSocketInit: function() {
 				let self = this;
@@ -371,21 +383,22 @@
 			async setCode(code, resinfo) {
 			
 				console.log(code)
-				const res = await this.$myRequest({
-					url: 'token/wxAppletLogin',
-					data: {
-						code: code
-					},
-					method: 'POST',
-				});
-				console.log(res, 'delshoucang');
-				var obj = {
-					code: code,
-					state: res.data.code,
-					nickName: resinfo!='null'?resinfo.userInfo.nickName:"匿名用户"
-				}
-				uni.setStorageSync('verification', obj);
-				if (res.data.code == 200) {
+				try {
+					const res = await this.$myRequest({
+						url: 'token/wxAppletLogin',
+						data: {
+							code: code
+						},
+						method: 'POST',
+						noToast: true
+					});
+					console.log(res, 'delshoucang');
+					var obj = {
+						code: code,
+						state: res.data.code,
+						nickName: resinfo!='null'?resinfo.userInfo.nickName:"匿名用户"
+					}
+					uni.setStorageSync('verification', obj);
 					this.tipMsg = "登录成功";
 					this.$refs.elm.showDialog();
 					
@@ -402,14 +415,15 @@
 					this.ownerId = res.data.data.info.id;
 					this.getMsgList(true);
 					this.connectSocketInit();
-				} else if (res.data.code == 11002) {
-			
-					uni.reLaunch({
-						url: "/pagesintroduction/selfIntroduction?code=" + code
-					})
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
+				} catch (res) {
+					if (res.data.code == 11002) {
+						uni.reLaunch({
+							url: "/pagesintroduction/selfIntroduction?code=" + code
+						})
+					} else {
+						this.tipMsg = res.data.msg;
+						this.$refs.elm.showDialog();
+					}
 				}
 			},
 			generateRandomString(length) {
