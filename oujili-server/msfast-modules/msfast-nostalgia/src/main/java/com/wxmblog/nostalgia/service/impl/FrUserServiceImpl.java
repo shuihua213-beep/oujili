@@ -372,49 +372,84 @@ public class FrUserServiceImpl extends ServiceImpl<FrUserDao, FrUserEntity> impl
     public void photoEdit(PhotoEditRequest request) {
         RLock lock = redissonClient.getLock(Constants.PHOTO_EDIT + TokenUtils.getOwnerId());
         try {
-            lock.lock();
+            boolean acquired = lock.tryLock(30, 10, TimeUnit.SECONDS);
+            if (!acquired) {
+                throw new JrsfException(UserExceptionEnum.USER_VERSION_DIFFERENT_EXCEPTION);
+            }
             FrUserEntity frUserEntity = this.getById(TokenUtils.getOwnerId());
             if (frUserEntity == null) {
                 throw new JrsfException(BaseUserExceptionEnum.USER_NOT_EXIST_EXCEPTION);
             }
+            Integer originalVersion = frUserEntity.getVersion();
+            boolean needDeleteOldUrl = false;
 
             if (PhotoEditTypeEnum.DELETE.equals(request.getPhotoEditType())) {
-
                 if (StringUtils.isBlank(request.getOldUrl())) {
                     throw new JrsfException(UserExceptionEnum.OLD_URL_NOT_EMPTY_EXCEPTION);
                 }
 
-                if (CollectionUtil.isNotEmpty(frUserEntity.getWaitApprovedImg())) {
+                boolean found = false;
 
+                if (CollectionUtil.isNotEmpty(frUserEntity.getWaitApprovedImg())) {
                     if (frUserEntity.getWaitApprovedImg().get(0).equals(request.getOldUrl())) {
                         throw new JrsfException(UserExceptionEnum.FIRST_PHOTO_NOT_DELETE_EXCEPTION);
                     }
-
-                    frUserEntity.getWaitApprovedImg().removeIf(p -> p.equals(request.getOldUrl()));
-                    if (CollectionUtil.isEmpty(frUserEntity.getImgList()) || !frUserEntity.getImgList().contains(request.getOldUrl())) {
-                        msfFileService.deleteFileByUrl(request.getOldUrl());
+                    if (frUserEntity.getWaitApprovedImg().removeIf(p -> p.equals(request.getOldUrl()))) {
+                        found = true;
                     }
-
                 }
+
+                if (CollectionUtil.isNotEmpty(frUserEntity.getImgList())) {
+                    if (frUserEntity.getImgList().removeIf(p -> p.equals(request.getOldUrl()))) {
+                        found = true;
+                    }
+                }
+
+                if (!found) {
+                    throw new JrsfException(UserExceptionEnum.OLD_URL_NOT_EMPTY_EXCEPTION);
+                }
+
+                if (CollectionUtil.isEmpty(frUserEntity.getImgList()) || !frUserEntity.getImgList().contains(request.getOldUrl())
+                        && (CollectionUtil.isEmpty(frUserEntity.getWaitApprovedImg()) || !frUserEntity.getWaitApprovedImg().contains(request.getOldUrl()))) {
+                    needDeleteOldUrl = true;
+                }
+
             } else if (PhotoEditTypeEnum.REPLACE.equals(request.getPhotoEditType())) {
                 if (StringUtils.isBlank(request.getNewUrl())) {
                     throw new JrsfException(UserExceptionEnum.NEW_URL_NOT_EMPTY_EXCEPTION);
                 }
-
                 if (StringUtils.isBlank(request.getOldUrl())) {
                     throw new JrsfException(UserExceptionEnum.OLD_URL_NOT_EMPTY_EXCEPTION);
                 }
 
+                boolean found = false;
+
                 if (CollectionUtil.isNotEmpty(frUserEntity.getWaitApprovedImg())) {
-                    Collections.replaceAll(frUserEntity.getWaitApprovedImg(), request.getOldUrl(), request.getNewUrl());
-                    if (CollectionUtil.isEmpty(frUserEntity.getImgList()) || !frUserEntity.getImgList().contains(request.getOldUrl())) {
-                        msfFileService.deleteFileByUrl(request.getOldUrl());
+                    if (frUserEntity.getWaitApprovedImg().contains(request.getOldUrl())) {
+                        Collections.replaceAll(frUserEntity.getWaitApprovedImg(), request.getOldUrl(), request.getNewUrl());
+                        found = true;
                     }
-
-                    setUserAuth(frUserEntity, AuthStatusEnum.EXAMINE);
                 }
-            } else if (PhotoEditTypeEnum.ADD.equals(request.getPhotoEditType())) {
 
+                if (CollectionUtil.isNotEmpty(frUserEntity.getImgList())) {
+                    if (frUserEntity.getImgList().contains(request.getOldUrl())) {
+                        Collections.replaceAll(frUserEntity.getImgList(), request.getOldUrl(), request.getNewUrl());
+                        found = true;
+                    }
+                }
+
+                if (!found) {
+                    throw new JrsfException(UserExceptionEnum.OLD_URL_NOT_EMPTY_EXCEPTION);
+                }
+
+                if (CollectionUtil.isEmpty(frUserEntity.getImgList()) || !frUserEntity.getImgList().contains(request.getOldUrl())
+                        && (CollectionUtil.isEmpty(frUserEntity.getWaitApprovedImg()) || !frUserEntity.getWaitApprovedImg().contains(request.getOldUrl()))) {
+                    needDeleteOldUrl = true;
+                }
+
+                setUserAuth(frUserEntity, AuthStatusEnum.EXAMINE);
+
+            } else if (PhotoEditTypeEnum.ADD.equals(request.getPhotoEditType())) {
                 if (StringUtils.isBlank(request.getNewUrl())) {
                     throw new JrsfException(UserExceptionEnum.NEW_URL_NOT_EMPTY_EXCEPTION);
                 }
@@ -428,14 +463,26 @@ public class FrUserServiceImpl extends ServiceImpl<FrUserDao, FrUserEntity> impl
                 }
                 setUserAuth(frUserEntity, AuthStatusEnum.EXAMINE);
             }
+
             if (CollectionUtil.isNotEmpty(frUserEntity.getWaitApprovedImg())) {
                 frUserEntity.setHeadPortrait(frUserEntity.getWaitApprovedImg().get(0));
+                setUserAuth(frUserEntity, AuthStatusEnum.EXAMINE);
+                frUserEntity.setAuthStatus(AuthStatusEnum.EXAMINE);
                 Map<String, Object> map = new HashMap<>();
                 map.put(WebSocketConstants.HEAD_PORTRAIT, frUserEntity.getHeadPortrait());
                 map.put(WebSocketConstants.NICK_NAME, frUserEntity.getNickName());
                 baseCommonService.updateUser(frUserEntity.getId(), map);
+            } else {
+                if (CollectionUtil.isNotEmpty(frUserEntity.getImgList())) {
+                    frUserEntity.setHeadPortrait(frUserEntity.getImgList().get(0));
+                }
             }
+
             this.updateById(frUserEntity);
+
+            if (needDeleteOldUrl) {
+                msfFileService.deleteFileByUrl(request.getOldUrl());
+            }
 
             //todo: 演示 用户编辑相册后自动通过 需删除 start
             UserExamineRequest request1 = new UserExamineRequest();
@@ -444,26 +491,49 @@ public class FrUserServiceImpl extends ServiceImpl<FrUserDao, FrUserEntity> impl
             request1.setVersion(frUserEntity.getVersion());
             examine(request1);
 
+            Integer finalVersion = frUserEntity.getVersion();
             Calendar calendar = Calendar.getInstance();
             calendar.add(Calendar.DATE, 1);
             Long secondsComplete = DateUtil.between(new Date(), calendar.getTime(), DateUnit.SECOND);
+            Integer userId = frUserEntity.getId();
 
             //一天后自动将用户信息设置为审核中
             ThreadUtil.getInstance().scheduledThreadPool.schedule(() -> {
-                FrUserEntity frUser = getById(frUserEntity.getId());
-                if (frUser.getAdditional() == null) {
-                    AdditionalResponse additional = new AdditionalResponse();
-                    additional.setWaitApprovedStatus(AuthStatusEnum.EXAMINE);
-                    frUser.setAdditional(additional);
-                } else {
-                    frUser.getAdditional().setWaitApprovedStatus(AuthStatusEnum.EXAMINE);
+                RLock scheduledLock = redissonClient.getLock(Constants.PHOTO_EDIT + userId);
+                try {
+                    boolean scheduledLockAcquired = scheduledLock.tryLock(30, 10, TimeUnit.SECONDS);
+                    if (!scheduledLockAcquired) {
+                        return;
+                    }
+                    FrUserEntity frUser = getById(userId);
+                    if (frUser == null || !frUser.getVersion().equals(finalVersion)) {
+                        return;
+                    }
+                    if (frUser.getAdditional() == null) {
+                        AdditionalResponse additional = new AdditionalResponse();
+                        additional.setWaitApprovedStatus(AuthStatusEnum.EXAMINE);
+                        frUser.setAdditional(additional);
+                    } else {
+                        frUser.getAdditional().setWaitApprovedStatus(AuthStatusEnum.EXAMINE);
+                    }
+                    frUser.setAuthStatus(AuthStatusEnum.EXAMINE);
+                    this.updateById(frUser);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    if (scheduledLock.isHeldByCurrentThread()) {
+                        scheduledLock.unlock();
+                    }
                 }
-                frUser.setAuthStatus(AuthStatusEnum.EXAMINE);
-                this.updateById(frUser);
             }, secondsComplete, TimeUnit.SECONDS);
             //todo: 演示 用户编辑相册后自动通过 需删除 end
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new JrsfException(UserExceptionEnum.USER_VERSION_DIFFERENT_EXCEPTION);
         } finally {
-            lock.unlock();
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
     }
 
