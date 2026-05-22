@@ -169,13 +169,29 @@ public class UserMatchingServiceImpl extends ServiceImpl<UserMatchingDao, UserMa
                             //添加对话框
                             addMessage(userId, request.getOtherUser());
                             if (UserTypeEnum.Dummy.equals(otherUser.getUserType())) {
-                                UserMatchingEntity userMatchingEntity1 = new UserMatchingEntity();
-                                userMatchingEntity1.setUserId(otherUser.getId());
-                                userMatchingEntity1.setOtherUser(userId);
-                                String genderOther = GenderEnum.MALE.equals(otherUser.getGender()) ? "小哥哥" : "小姐姐";
-                                userMatchingEntity1.setDescInfo("一个" + DateUtils.getConstellation(otherUser.getBirthday()) + "的" + genderOther);
-                                userMatchingEntity1.setResult(true);
-                                this.baseMapper.insert(userMatchingEntity1);
+                                RLock dummyLock = redissonClient.getLock(Constants.MATCHING + otherUser.getId());
+                                try {
+                                    dummyLock.lock();
+                                    Wrapper<UserMatchingEntity> dummyWrapper = new QueryWrapper<UserMatchingEntity>().lambda()
+                                            .eq(UserMatchingEntity::getUserId, otherUser.getId())
+                                            .eq(UserMatchingEntity::getOtherUser, userId)
+                                            .last("limit 1");
+                                    UserMatchingEntity existingDummyMatch = this.baseMapper.selectOne(dummyWrapper);
+                                    if (existingDummyMatch != null) {
+                                        existingDummyMatch.setResult(true);
+                                        this.baseMapper.updateById(existingDummyMatch);
+                                    } else {
+                                        UserMatchingEntity userMatchingEntity1 = new UserMatchingEntity();
+                                        userMatchingEntity1.setUserId(otherUser.getId());
+                                        userMatchingEntity1.setOtherUser(userId);
+                                        String genderOther = GenderEnum.MALE.equals(otherUser.getGender()) ? "小哥哥" : "小姐姐";
+                                        userMatchingEntity1.setDescInfo("一个" + DateUtils.getConstellation(otherUser.getBirthday()) + "的" + genderOther);
+                                        userMatchingEntity1.setResult(true);
+                                        this.baseMapper.insert(userMatchingEntity1);
+                                    }
+                                } finally {
+                                    dummyLock.unlock();
+                                }
                             }
                         }
                     }
