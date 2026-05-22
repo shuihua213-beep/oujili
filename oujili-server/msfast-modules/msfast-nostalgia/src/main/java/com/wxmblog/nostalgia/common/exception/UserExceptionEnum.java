@@ -16,7 +16,9 @@ public enum UserExceptionEnum implements BaseExceptionEnumInterface {
     BALANCE_LESS(12009, "余额不足"),
     LIKE_ME_LESS_PRICE(12010, "喜欢你的数量不够全部解锁"),
 
-    ARTICLE_IS_EMPTY(12011, "内容不能为空");
+    ARTICLE_IS_EMPTY(12011, "内容不能为空"),
+
+    OLD_URL_NOT_EXIST_EXCEPTION(12012, "旧图片地址不存在");
 
     private Integer code;
     private String msg;
