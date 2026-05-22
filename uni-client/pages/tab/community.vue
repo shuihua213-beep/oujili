@@ -143,6 +143,14 @@
 			selectShare(value) {
 				this.selectInfo = value
 			},
+			showRequestError(res) {
+				this.$handleRequestError(res, {
+					onShow: (message) => {
+						this.tipMsg = message;
+						this.$refs.elm.showDialog();
+					}
+				})
+			},
 			// swiper滑动结束
 			swiperAnimationfinish(e) {
 				this.current = e.detail.current;
@@ -154,6 +162,10 @@
 					withToken: true,
 					method: 'GET',
 				}).then(res => {
+					if (!this.$isRequestSuccess(res)) {
+						this.showRequestError(res)
+						return;
+					}
 					this.num = res.data != null ? res.data.data : 0;
 				})
 			},
@@ -164,15 +176,13 @@
 					withToken: true,
 					method: 'DELETE',
 				}).then(res => {
-					if (res.data.code == 200) {
+					if (this.$isRequestSuccess(res)) {
 						let idx = this.arr.findIndex(item => item.id == value.id)
 						this.arr.splice(idx, 1)
 						this.total -= 1
-					} else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
+						return;
 					}
-
+					this.showRequestError(res)
 				})
 			},
 			// 点赞
@@ -199,17 +209,15 @@
 					withToken: true,
 					method: 'PUT',
 				}).then(res => {
-					if (res.data.code == "200") {
+					if (this.$isRequestSuccess(res)) {
 						obj.isLike = !value.isLike
 						let idx = this.arr.findIndex(item => item.id == obj.id)
 						this.arr.splice(idx, 1, obj)
-					} else {
-						console.log(res.data.msg)
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
 						return;
 					}
-
+					console.log(res.bizMsg)
+					this.showRequestError(res)
+					return;
 				})
 			},
 			onRefresh() {
@@ -253,6 +261,10 @@
 					withToken: true,
 					method: 'GET',
 				}).then(res => {
+					if (!this.$isRequestSuccess(res)) {
+						this.showRequestError(res)
+						return;
+					}
 					this.total = res.data.data.totalCount
 					if (isFirst) this.arr = []
 					this.arr = [...this.arr, ...res.data.data.rows].map(item => {
@@ -333,7 +345,7 @@
 					nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
 				};
 				uni.setStorageSync('verification', obj);
-				if (res.data.code == 200) {
+				if (this.$isRequestSuccess(res)) {
 					this.isLoginPop = false;
 					this.isConfirm = true;
 					this.tipMsg = "登录成功";
@@ -349,14 +361,13 @@
 					};
 					uni.setStorageSync('info', info);
 					uni.setStorageSync('token', res.data.data.token);
-				} else if (res.data.code == 11002) {
+				} else if (this.$getRequestCode(res) == 11002) {
 					this.isLoginPop = false;
 					uni.reLaunch({
 						url: '/pagesintroduction/selfIntroduction?code=' + code
 					});
 				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
+					this.showRequestError(res)
 				}
 			},
 			confirm() {

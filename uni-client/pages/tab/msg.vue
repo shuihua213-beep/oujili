@@ -144,6 +144,10 @@
 					withToken: true,
 					method: 'GET'
 				});
+				if (!this.$isRequestSuccess(res)) {
+					this.showRequestError(res)
+					return;
+				}
 				this.count = res.data.data
 				uni.setTabBarBadge({ //显示数字
 					index: 1, //tabbar下标
@@ -161,6 +165,10 @@
 					withToken: true,
 					method: 'DELETE'
 				}).then(res => {
+					if (!this.$isRequestSuccess(res)) {
+						this.showRequestError(res)
+						return;
+					}
 					this.referesh()
 					this.status = 'close';
 				})
@@ -169,6 +177,14 @@
 			actionClick(i) {
 				this.tipMsg = "开源版暂未开放，敬请期待！如需旗舰版，可联系作者微信（MMRWXM）咨询";
 				this.$refs.elm.showDialog();
+			},
+			showRequestError(res) {
+				this.$handleRequestError(res, {
+					onShow: (message) => {
+						this.tipMsg = message;
+						this.$refs.elm.showDialog();
+					}
+				})
 			},
 			async getMsgList(isReload) {
 				let page= this.params;
@@ -186,6 +202,10 @@
 					data: page,
 					method: 'GET'
 				});
+				if (!this.$isRequestSuccess(res)) {
+					this.showRequestError(res)
+					return;
+				}
 				if (isReload) {
 					this.list = res.data.data.rows;
 				} else {
@@ -385,7 +405,7 @@
 					nickName: resinfo!='null'?resinfo.userInfo.nickName:"匿名用户"
 				}
 				uni.setStorageSync('verification', obj);
-				if (res.data.code == 200) {
+				if (this.$isRequestSuccess(res)) {
 					this.tipMsg = "登录成功";
 					this.$refs.elm.showDialog();
 					
@@ -402,14 +422,13 @@
 					this.ownerId = res.data.data.info.id;
 					this.getMsgList(true);
 					this.connectSocketInit();
-				} else if (res.data.code == 11002) {
+				} else if (this.$getRequestCode(res) == 11002) {
 			
 					uni.reLaunch({
 						url: "/pagesintroduction/selfIntroduction?code=" + code
 					})
 				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
+					this.showRequestError(res)
 				}
 			},
 			generateRandomString(length) {

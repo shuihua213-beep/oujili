@@ -112,6 +112,14 @@
 			selectShare(item) {
 				this.$emit("selectShare", item)
 			},
+			showRequestError(res) {
+				this.$handleRequestError(res, {
+					onShow: (message) => {
+						this.tipMsg = message;
+						this.$refs.elm.showDialog();
+					}
+				})
+			},
 			// 删除
 			deleteFn(value) {
 				this.$myRequest({
@@ -119,16 +127,12 @@
 					withToken: true,
 					method: 'DELETE',
 				}).then(res => {
-					
-					if (res.data.code == "200") {
+					if (this.$isRequestSuccess(res)) {
 						let idx = this.dataList.findIndex(item => item.id == value.id)
 						this.dataList.splice(idx, 1)
+						return;
 					}
-					else{
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
-					}
-					
+					this.showRequestError(res)
 				})
 			},
 			// 点赞
@@ -154,17 +158,15 @@
 					withToken: true,
 					method: 'PUT',
 				}).then(res => {
-					if (res.data.code == "200") {
+					if (this.$isRequestSuccess(res)) {
 						obj.isLike = !value.isLike
 						let idx = this.dataList.findIndex(item => item.id == obj.id)
 						this.dataList.splice(idx, 1, obj)
-					} else if(res.data.code == "10006"){
-						console.log("报错了："+res.data.code)
-						this.chilkLog=true;
-					}
-					else{
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
+					} else if (this.$getRequestCode(res) == 10006) {
+						console.log("报错了：" + this.$getRequestCode(res))
+						this.chilkLog = true;
+					} else {
+						this.showRequestError(res)
 					}
 
 				})
@@ -198,7 +200,7 @@
 					withToken: true,
 					method: 'GET',
 				}).then(res => {
-					if (res.data.code == 200) {
+					if (this.$isRequestSuccess(res)) {
 						let arr = res.data.data.rows.map(item => {
 							return {
 								...item,
@@ -209,19 +211,6 @@
 						setTimeout(() => {
 							this.firstLoaded = true;
 						}, 100)
-					} else if (res.data.code == 10006) {
-						let rows = [];
-						let arr = rows.map(item => {
-							return {
-								...item,
-								isDel: item.userId == this.userInfo != null ? this.userInfo.id : 0
-							}
-						})
-						this.$refs.paging.complete(arr);
-						setTimeout(() => {
-							this.firstLoaded = true;
-						}, 100)
-
 					} else {
 						let rows = [];
 						let arr = rows.map(item => {
@@ -234,7 +223,11 @@
 						setTimeout(() => {
 							this.firstLoaded = true;
 						}, 100)
+						if (this.$getRequestCode(res) == 10006) {
+							return;
+						}
 						console.log("请求失败")
+						this.showRequestError(res)
 					}
 				}).catch(res => {
 					debugger
@@ -310,7 +303,7 @@
 					nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
 				};
 				uni.setStorageSync('verification', obj);
-				if (res.data.code == 200) {
+				if (this.$isRequestSuccess(res)) {
 					this.isLoginPop = false;
 					this.isConfirm = true;
 					this.tipMsg = "登录成功";
@@ -326,14 +319,13 @@
 					};
 					uni.setStorageSync('info', info);
 					uni.setStorageSync('token', res.data.data.token);
-				} else if (res.data.code == 11002) {
+				} else if (this.$getRequestCode(res) == 11002) {
 					this.isLoginPop = false;
 					uni.reLaunch({
 						url: '/pagesintroduction/selfIntroduction?code=' + code
 					});
 				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
+					this.showRequestError(res)
 				}
 			},
 			confirm() {

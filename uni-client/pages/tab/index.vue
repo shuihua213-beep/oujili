@@ -435,6 +435,10 @@
 					withToken: true,
 					method: 'GET'
 				});
+				if (!this.$isRequestSuccess(res)) {
+					this.showRequestError(res)
+					return;
+				}
 				this.count = res.data.data
 				uni.setTabBarBadge({ //显示数字
 					index: 1, //tabbar下标
@@ -462,6 +466,14 @@
 			closeLikePop() {
 				this.showLikePop = false;
 				this.getRecUserInfo();
+			},
+			showRequestError(res) {
+				this.$handleRequestError(res, {
+					onShow: (message) => {
+						this.tipMsg = message;
+						this.$refs.elm.showDialog();
+					}
+				})
 			},
 			async logion(id, type, url) {
 				this.animUrl = url;
@@ -497,13 +509,12 @@
 					method: 'POST'
 				}).then(res => {
 					console.log("匹配结束1：" + userId)
-					if (res.data.code == 200) {
+					if (this.$isRequestSuccess(res)) {
 						this.showAnima = true;
 						setTimeout(() => {
 							this.showAnima = false;
 						}, 1000);
 
-						// 显示 相互 弹窗		this.showLikePop = true;
 						if (res.data.data && res.data.data.result) {
 							this.showLikePop = true;
 							this.mutualInfo = res.data.data;
@@ -511,12 +522,10 @@
 							console.log("匹配结束2：" + userId)
 							this.getRecUserInfo();
 						}
-
-					} else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
-						this.showBtn = true;
+						return;
 					}
+					this.showBtn = true;
+					this.showRequestError(res)
 				})
 
 			},
@@ -595,7 +604,7 @@
 					nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
 				};
 				uni.setStorageSync('verification', obj);
-				if (res.data.code == 200) {
+				if (this.$isRequestSuccess(res)) {
 					this.isLoginPop = false;
 					this.isConfirm = true;
 					this.tipMsg = "登录成功";
@@ -611,14 +620,13 @@
 					};
 					uni.setStorageSync('info', info);
 					uni.setStorageSync('token', res.data.data.token);
-				} else if (res.data.code == 11002) {
+				} else if (this.$getRequestCode(res) == 11002) {
 					this.isLoginPop = false;
 					uni.reLaunch({
 						url: '/pagesintroduction/selfIntroduction?code=' + code
 					});
 				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
+					this.showRequestError(res)
 				}
 			},
 			getRecUserInfo() {
@@ -641,11 +649,10 @@
 					method: 'GET'
 				}).then(res => {
 					console.log("获取用户信息完成")
-					if (res.data.code == 200) {
+					if (this.$isRequestSuccess(res)) {
 						if (res.data.data == null) {
 							this.showArrowDown = false;
 							this.isInit = false;
-							// this.data = [];
 							this.userData = {};
 							this.nextData = {};
 							uni.setTabBarBadge({
@@ -669,10 +676,9 @@
 								`console.log("获取用户信息完成") 用户id${res.data.data.id}****剩余次数${res.data.data.surplusNum}`
 							);
 						}
-					} else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
+						return;
 					}
+					this.showRequestError(res)
 				})
 			},
 			connectSocketInit: function() {

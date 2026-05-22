@@ -16,13 +16,19 @@ import {
 	myRequest,
 	BASE_URL,
 	getId,
-	AMAPKEY
+	AMAPKEY,
+	isRequestSuccess,
+	handleRequestError,
+	getRequestCode
 } from 'util/api.js';
 
 Vue.prototype.$myRequest = myRequest; // 接口请求  
 Vue.prototype.$BASE_URL =  BASE_URL;//正式接口
 Vue.prototype.$getId = getId; // 获取缓存用户信息
 Vue.prototype.$AMAPKEY = AMAPKEY; // 定位key
+Vue.prototype.$isRequestSuccess = isRequestSuccess;
+Vue.prototype.$handleRequestError = handleRequestError;
+Vue.prototype.$getRequestCode = getRequestCode;
 
 // 导入并挂载全局的分享方法
 import share from '@/common/share.js'

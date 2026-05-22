@@ -258,6 +258,10 @@
 					withToken: true,
 					method: 'GET'
 				});
+				if (!this.$isRequestSuccess(res)) {
+					this.showRequestError(res)
+					return;
+				}
 				uni.setTabBarBadge({ //显示数字
 					index: 1, //tabbar下标
 					text: `${res.data.data}` //数字
@@ -283,6 +287,14 @@
 				} else if (i == 2) {
 
 				}
+			},
+			showRequestError(res) {
+				this.$handleRequestError(res, {
+					onShow: (message) => {
+						this.tipMsg = message;
+						this.$refs.elm.showDialog();
+					}
+				})
 			},
 			//登录
 			getUserInfo() {
@@ -349,7 +361,7 @@
 					nickName: resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户"
 				}
 				uni.setStorageSync('verification', obj);
-				if (res.data.code == 200) {
+				if (this.$isRequestSuccess(res)) {
 					this.tipMsg = "登录成功";
 					this.$refs.elm.showDialog();
 					var info = {
@@ -366,14 +378,13 @@
 					this.getUnRead()
 					this.ownerId = res.data.data.info.id;
 					this.connectSocketInit();
-				} else if (res.data.code == 11002) {
+				} else if (this.$getRequestCode(res) == 11002) {
 
 					uni.reLaunch({
 						url: "/pagesintroduction/selfIntroduction?code=" + code
 					})
 				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
+					this.showRequestError(res)
 				}
 			},
 
@@ -383,7 +394,7 @@
 					withToken: true,
 					method: 'GET',
 				});
-				if (res.data.code == 200) {
+				if (this.$isRequestSuccess(res)) {
 					this.info = res.data.data
 					if(this.info.userArticleViewResponse.articleImg.length>3){
 						this.info.userArticleViewResponse.articleImg = this.info.userArticleViewResponse.articleImg.splice(0,3)
@@ -403,8 +414,7 @@
 					}
 					this.nologin = false
 				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
+					this.showRequestError(res)
 
 				}
 			},
