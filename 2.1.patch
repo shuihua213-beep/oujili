@@ -1,0 +1,42 @@
+diff --git a/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/UserMatchingServiceImpl.java b/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/UserMatchingServiceImpl.java
+index be0fbc9..3989e1c 100644
+--- a/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/UserMatchingServiceImpl.java
++++ b/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/UserMatchingServiceImpl.java
+@@ -169,13 +169,30 @@ public class UserMatchingServiceImpl extends ServiceImpl<UserMatchingDao, UserMa
+                             //添加对话框
+                             addMessage(userId, request.getOtherUser());
+                             if (UserTypeEnum.Dummy.equals(otherUser.getUserType())) {
+-                                UserMatchingEntity userMatchingEntity1 = new UserMatchingEntity();
+-                                userMatchingEntity1.setUserId(otherUser.getId());
+-                                userMatchingEntity1.setOtherUser(userId);
+-                                String genderOther = GenderEnum.MALE.equals(otherUser.getGender()) ? "小哥哥" : "小姐姐";
+-                                userMatchingEntity1.setDescInfo("一个" + DateUtils.getConstellation(otherUser.getBirthday()) + "的" + genderOther);
+-                                userMatchingEntity1.setResult(true);
+-                                this.baseMapper.insert(userMatchingEntity1);
++                                String lockKey = Constants.MATCHING + otherUser.getId() + "_" + userId;
++                                RLock dummyLock = redissonClient.getLock(lockKey);
++                                try {
++                                    dummyLock.lock();
++                                    Wrapper<UserMatchingEntity> dummyWrapper = new QueryWrapper<UserMatchingEntity>().lambda()
++                                            .eq(UserMatchingEntity::getUserId, otherUser.getId())
++                                            .eq(UserMatchingEntity::getOtherUser, userId);
++                                    Long dummyCount = this.baseMapper.selectCount(dummyWrapper);
++                                    if (dummyCount == 0) {
++                                        UserMatchingEntity userMatchingEntity1 = new UserMatchingEntity();
++                                        userMatchingEntity1.setUserId(otherUser.getId());
++                                        userMatchingEntity1.setOtherUser(userId);
++                                        String genderOther = GenderEnum.MALE.equals(otherUser.getGender()) ? "小哥哥" : "小姐姐";
++                                        userMatchingEntity1.setDescInfo("一个" + DateUtils.getConstellation(otherUser.getBirthday()) + "的" + genderOther);
++                                        userMatchingEntity1.setResult(true);
++                                        this.baseMapper.insert(userMatchingEntity1);
++                                    } else {
++                                        UserMatchingEntity updateEntity = new UserMatchingEntity();
++                                        updateEntity.setResult(true);
++                                        this.baseMapper.update(updateEntity, dummyWrapper);
++                                    }
++                                } finally {
++                                    dummyLock.unlock();
++                                }
+                             }
+                         }
+                     }
