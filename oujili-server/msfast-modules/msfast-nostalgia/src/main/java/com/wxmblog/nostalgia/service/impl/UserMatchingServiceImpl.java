@@ -2,6 +2,7 @@ package com.wxmblog.nostalgia.service.impl;
 
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.pagehelper.Page;
@@ -166,17 +167,10 @@ public class UserMatchingServiceImpl extends ServiceImpl<UserMatchingDao, UserMa
                             matchingResponse.setOtherHeadPortrait(otherUser.getHeadPortrait());
                             matchingResponse.setOtherId(otherUser.getId());
                             matchingResponse.setOtherNickName(otherUser.getNickName());
-                            //添加对话框
-                            addMessage(userId, request.getOtherUser());
                             if (UserTypeEnum.Dummy.equals(otherUser.getUserType())) {
-                                UserMatchingEntity userMatchingEntity1 = new UserMatchingEntity();
-                                userMatchingEntity1.setUserId(otherUser.getId());
-                                userMatchingEntity1.setOtherUser(userId);
-                                String genderOther = GenderEnum.MALE.equals(otherUser.getGender()) ? "小哥哥" : "小姐姐";
-                                userMatchingEntity1.setDescInfo("一个" + DateUtils.getConstellation(otherUser.getBirthday()) + "的" + genderOther);
-                                userMatchingEntity1.setResult(true);
-                                this.baseMapper.insert(userMatchingEntity1);
+                                saveOrUpdateDummyMatching(otherUser, userId);
                             }
+                            addMessage(userId, request.getOtherUser());
                         }
                     }
 
@@ -186,6 +180,35 @@ public class UserMatchingServiceImpl extends ServiceImpl<UserMatchingDao, UserMa
             this.baseMapper.insert(userMatchingEntity);
         }
         return matchingResponse;
+    }
+
+    private void saveOrUpdateDummyMatching(FrUserEntity otherUser, Integer userId) {
+        RLock lock = redissonClient.getLock(Constants.MATCHING + "DUMMY_" + otherUser.getId() + "_" + userId);
+        try {
+            lock.lock();
+            LambdaQueryWrapper<UserMatchingEntity> queryWrapper = new QueryWrapper<UserMatchingEntity>().lambda()
+                    .eq(UserMatchingEntity::getUserId, otherUser.getId())
+                    .eq(UserMatchingEntity::getOtherUser, userId)
+                    .orderByDesc(UserMatchingEntity::getId)
+                    .last("limit 1");
+            UserMatchingEntity existMatching = this.baseMapper.selectOne(queryWrapper);
+            String genderOther = GenderEnum.MALE.equals(otherUser.getGender()) ? "小哥哥" : "小姐姐";
+            String descInfo = "一个" + DateUtils.getConstellation(otherUser.getBirthday()) + "的" + genderOther;
+            if (existMatching != null) {
+                existMatching.setResult(true);
+                existMatching.setDescInfo(descInfo);
+                this.baseMapper.updateById(existMatching);
+                return;
+            }
+            UserMatchingEntity userMatchingEntity = new UserMatchingEntity();
+            userMatchingEntity.setUserId(otherUser.getId());
+            userMatchingEntity.setOtherUser(userId);
+            userMatchingEntity.setDescInfo(descInfo);
+            userMatchingEntity.setResult(true);
+            this.baseMapper.insert(userMatchingEntity);
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Async
