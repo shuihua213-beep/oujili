@@ -638,7 +638,9 @@
 						age,
 						gender: this.gender == undefined ? "FEMALE" : this.gender
 					},
-					method: 'GET'
+					method: 'GET',
+					dedup: true,
+					dedupKey: 'recommendUserInfo'
 				}).then(res => {
 					console.log("获取用户信息完成")
 					if (res.data.code == 200) {
