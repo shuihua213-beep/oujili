@@ -84,12 +84,6 @@
 						uni.switchTab({
 							url: '/pageslogin/index/index'
 						});
-						/* uni.reLaunch({
-							url: '/pageslogin/index/index'
-						}); */
-					} else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
 					}
 				})
 			},

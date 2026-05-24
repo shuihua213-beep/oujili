@@ -115,9 +115,6 @@
 								})
 								uni.hideLoading()
 							}, 1000) */
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			confirm() {

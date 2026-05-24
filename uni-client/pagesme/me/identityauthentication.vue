@@ -53,9 +53,6 @@
 
 					}
 
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			chooseImg(type) {
@@ -139,9 +136,6 @@
 					this.tipMsg = "提交成功";
 					this.$refs.elm.showDialog();
 				
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			confirm() {

@@ -187,14 +187,11 @@
 						praiseType
 					}
 				}).then(res => {
-					if (res.data.code == "200") {
+					if (res.data.code == 200) {
 						callback();
-					} else if (res.data.code == "10006") {
+					} else if (res.data.code == 10006) {
 						console.log("报错了：" + res.data.code)
 						this.isLoginPop = true;
-					}else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
 					}
 					
 				})
@@ -221,17 +218,13 @@
 							content: this.inputVal
 						}
 					}).then(res => {
-						if (res.data.code == "200") {
+						if (res.data.code == 200) {
 							this.$refs.commontRef.close()
 							this.inputVal = ''
-							// this.$emit("refresh2",data.row.id)
 							this.$emit("refresh")
-						} else if (res.data.code == "10006") {
+						} else if (res.data.code == 10006) {
 							console.log("报错了：" + res.data.code)
 							this.isLoginPop = true;
-						}else {
-							this.tipMsg = res.data.msg;
-							this.$refs.elm.showDialog();
 						}
 						
 					})
@@ -245,17 +238,14 @@
 							content: this.inputVal
 						}
 					}).then(res => {
-						if (res.data.code == "200") {
+						if (res.data.code == 200) {
 							this.$refs.commontRef.close()
 							this.inputVal = ''
 							// this.$emit("refresh2",data.row.id)
 							this.$emit("refresh")
-						} else if (res.data.code == "10006") {
+						} else if (res.data.code == 10006) {
 							console.log("报错了：" + res.data.code)
 							this.isLoginPop = true;
-						}else {
-							this.tipMsg = res.data.msg;
-							this.$refs.elm.showDialog();
 						}
 						
 					})
@@ -269,16 +259,13 @@
 							content: this.inputVal
 						}
 					}).then(res => {
-						if (res.data.code == "200") {
+						if (res.data.code == 200) {
 							this.$refs.commontRef.close()
 							this.inputVal = ''
 							this.$emit("refresh")
-						} else if (res.data.code == "10006") {
+						} else if (res.data.code == 10006) {
 							console.log("报错了：" + res.data.code)
 							this.isLoginPop = true;
-						}else {
-							this.tipMsg = res.data.msg;
-							this.$refs.elm.showDialog();
 						}
 						
 					})
@@ -494,9 +481,6 @@
 					uni.reLaunch({
 						url: '/pagesintroduction/selfIntroduction?code=' + code
 					});
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			generateRandomString(length) {

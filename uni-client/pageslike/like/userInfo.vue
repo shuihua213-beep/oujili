@@ -437,9 +437,6 @@
 				}).then(res => {
 					if (res.data.code == 200) {
 						this.getUserInfo();
-					} else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
 					}
 				})
 			},
@@ -546,8 +543,6 @@
 						console.log("匹配结束2：" + userId)
 						this.getUserInfo();
 					} else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
 						this.showBtn = true;
 					}
 				})
@@ -636,9 +631,6 @@
 					uni.reLaunch({
 						url: '/pagesintroduction/selfIntroduction?code=' + code
 					});
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			backbar() {

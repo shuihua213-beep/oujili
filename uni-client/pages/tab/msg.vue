@@ -407,9 +407,6 @@
 					uni.reLaunch({
 						url: "/pagesintroduction/selfIntroduction?code=" + code
 					})
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			generateRandomString(length) {
