@@ -1,0 +1,49 @@
+diff --git a/uni-client/pages/tab/index.vue b/uni-client/pages/tab/index.vue
+index 8dd4cc8..31aeef2 100644
+--- a/uni-client/pages/tab/index.vue
++++ b/uni-client/pages/tab/index.vue
+@@ -208,7 +208,7 @@
+ 							<u-button class="name" open-type="share">将{{userData.gender!='MALE'?'她':'他'}}推荐给好友</u-button>
+ 							<view class="name" open-type="share">将{{userData.gender!='MALE'?'她':'他'}}推荐给好友</view>
+ 						</view> -->
+-						<view class="bo" style="'border-radius':'24rpx'">
++						<view class="bo" :style="{'border-radius':'24rpx'}">
+ 							<u-button class="name" open-type="share" :hairline="false" :customStyle="{
+ 								'font-size': '28rpx',
+ 								'font-family': 'PingFang SC-Heavy, PingFang SC',
+@@ -347,7 +347,8 @@
+ 				timeoutObj: null,
+ 				reConnect: true,
+ 				socketTask: null,
+-				chooseimg: false
++				chooseimg: false,
++				isLoadingRecUser: false
+ 			};
+ 		},
+ 		onHide() {
+@@ -622,6 +623,8 @@
+ 				}
+ 			},
+ 			getRecUserInfo() {
++				if (this.isLoadingRecUser) return;
++				this.isLoadingRecUser = true;
+ 				console.log("开始获取用户信息")
+ 				// 获取推荐用户信息
+ 				let age = 20;
+@@ -640,6 +643,7 @@
+ 					},
+ 					method: 'GET'
+ 				}).then(res => {
++					this.isLoadingRecUser = false;
+ 					console.log("获取用户信息完成")
+ 					if (res.data.code == 200) {
+ 						if (res.data.data == null) {
+@@ -673,6 +677,8 @@
+ 						this.tipMsg = res.data.msg;
+ 						this.$refs.elm.showDialog();
+ 					}
++				}).catch(err => {
++					this.isLoadingRecUser = false;
+ 				})
+ 			},
+ 			connectSocketInit: function() {
