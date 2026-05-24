@@ -371,9 +371,6 @@
 					uni.reLaunch({
 						url: "/pagesintroduction/selfIntroduction?code=" + code
 					})
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 
@@ -402,10 +399,6 @@
 						this.dataflag = true
 					}
 					this.nologin = false
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
-
 				}
 			},
 			connectSocketInit: function() {

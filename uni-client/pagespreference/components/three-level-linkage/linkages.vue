@@ -144,9 +144,6 @@
 					this.firstLevel = res.data.data
 					this.erji = res.data.data[0].regionCode
 					this.pulling()
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			async pulls(obj) {
@@ -179,9 +176,6 @@
 					this.erji = this.firstLevel[0].regionCode
 					this.obj.index = obj.index
 					this.pullings()
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			async pullings() {
@@ -211,9 +205,6 @@
 					this.obj.nameing = this.obj.regionName1 + '-' + this.secondLevel[0].regionName
 
 
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			async pulling() {
@@ -243,9 +234,6 @@
 					this.obj.regionName2 = this.secondLevel[0].regionName
 					this.obj.nameing = this.obj.regionName1 + '-' + this.obj.regionName2
 
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			init() {

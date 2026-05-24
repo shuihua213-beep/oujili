@@ -68,9 +68,6 @@
 				});
 				if (res.data.code == 200) {
 					this.userInfo = res.data.data
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 		}

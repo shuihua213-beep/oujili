@@ -37,7 +37,10 @@ export const myRequest = (options) => {
 				Authorization:options.withToken? uni.getStorageSync("token"):'',
 			},
 			success: (res) => {
-				if (res.data.code == 2) {
+				const code = res.data.code;
+				const msg = res.data.msg;
+
+				if (code == 2) {
 					uni.showToast({
 						icon: 'none',
 						title: '登录失效，请重新登录',
@@ -48,7 +51,18 @@ export const myRequest = (options) => {
 							url:"/pages/tab/index"
 						})
 					}, 200);
+					reject(res);
+					return;
 				}
+
+				if (code != 200 && code != 10006 && code != 11002 && msg) {
+					uni.showToast({
+						icon: 'none',
+						title: msg,
+						duration: 2000
+					})
+				}
+
 				resolve(res);
 			},
 			fail: (err) => {

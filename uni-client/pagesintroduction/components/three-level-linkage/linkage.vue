@@ -153,9 +153,6 @@
 
 					this.erji = this.firstLevel[0].regionCode
 					this.pullings()
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			async pullings() {
@@ -185,9 +182,6 @@
 					this.obj.nameing = this.obj.regionName1 + '-' + this.secondLevel[0].regionName
 
 
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 

@@ -1,0 +1,848 @@
+diff --git a/uni-client/pages/components/List.vue b/uni-client/pages/components/List.vue
+index 5605508..c4688fc 100644
+--- a/uni-client/pages/components/List.vue
++++ b/uni-client/pages/components/List.vue
+@@ -120,14 +120,10 @@
+ 					method: 'DELETE',
+ 				}).then(res => {
+ 					
+-					if (res.data.code == "200") {
++					if (res.data.code == 200) {
+ 						let idx = this.dataList.findIndex(item => item.id == value.id)
+ 						this.dataList.splice(idx, 1)
+ 					}
+-					else{
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+-					}
+ 					
+ 				})
+ 			},
+@@ -154,19 +150,14 @@
+ 					withToken: true,
+ 					method: 'PUT',
+ 				}).then(res => {
+-					if (res.data.code == "200") {
++					if (res.data.code == 200) {
+ 						obj.isLike = !value.isLike
+ 						let idx = this.dataList.findIndex(item => item.id == obj.id)
+ 						this.dataList.splice(idx, 1, obj)
+-					} else if(res.data.code == "10006"){
++					} else if(res.data.code == 10006){
+ 						console.log("报错了："+res.data.code)
+ 						this.chilkLog=true;
+ 					}
+-					else{
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+-					}
+-
+ 				})
+ 			},
+ 			// 接收父组件传过来的刷新列表要求
+@@ -331,9 +322,6 @@
+ 					uni.reLaunch({
+ 						url: '/pagesintroduction/selfIntroduction?code=' + code
+ 					});
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			confirm() {
+diff --git a/uni-client/pages/tab/community.vue b/uni-client/pages/tab/community.vue
+index 6e6f526..d3b5159 100644
+--- a/uni-client/pages/tab/community.vue
++++ b/uni-client/pages/tab/community.vue
+@@ -168,9 +168,6 @@
+ 						let idx = this.arr.findIndex(item => item.id == value.id)
+ 						this.arr.splice(idx, 1)
+ 						this.total -= 1
+-					} else {
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+ 					}
+ 
+ 				})
+@@ -199,15 +196,10 @@
+ 					withToken: true,
+ 					method: 'PUT',
+ 				}).then(res => {
+-					if (res.data.code == "200") {
++					if (res.data.code == 200) {
+ 						obj.isLike = !value.isLike
+ 						let idx = this.arr.findIndex(item => item.id == obj.id)
+ 						this.arr.splice(idx, 1, obj)
+-					} else {
+-						console.log(res.data.msg)
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+-						return;
+ 					}
+ 
+ 				})
+@@ -354,9 +346,6 @@
+ 					uni.reLaunch({
+ 						url: '/pagesintroduction/selfIntroduction?code=' + code
+ 					});
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			confirm() {
+diff --git a/uni-client/pages/tab/index.vue b/uni-client/pages/tab/index.vue
+index 8dd4cc8..d347023 100644
+--- a/uni-client/pages/tab/index.vue
++++ b/uni-client/pages/tab/index.vue
+@@ -513,8 +513,6 @@
+ 						}
+ 
+ 					} else {
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+ 						this.showBtn = true;
+ 					}
+ 				})
+@@ -616,9 +614,6 @@
+ 					uni.reLaunch({
+ 						url: '/pagesintroduction/selfIntroduction?code=' + code
+ 					});
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			getRecUserInfo() {
+@@ -669,9 +664,6 @@
+ 								`console.log("获取用户信息完成") 用户id${res.data.data.id}****剩余次数${res.data.data.surplusNum}`
+ 							);
+ 						}
+-					} else {
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+ 					}
+ 				})
+ 			},
+diff --git a/uni-client/pages/tab/msg.vue b/uni-client/pages/tab/msg.vue
+index 4ccb77c..e115db4 100644
+--- a/uni-client/pages/tab/msg.vue
++++ b/uni-client/pages/tab/msg.vue
+@@ -407,9 +407,6 @@
+ 					uni.reLaunch({
+ 						url: "/pagesintroduction/selfIntroduction?code=" + code
+ 					})
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			generateRandomString(length) {
+diff --git a/uni-client/pages/tab/my.vue b/uni-client/pages/tab/my.vue
+index fb7282d..bc2e800 100644
+--- a/uni-client/pages/tab/my.vue
++++ b/uni-client/pages/tab/my.vue
+@@ -371,9 +371,6 @@
+ 					uni.reLaunch({
+ 						url: "/pagesintroduction/selfIntroduction?code=" + code
+ 					})
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 
+@@ -402,10 +399,6 @@
+ 						this.dataflag = true
+ 					}
+ 					this.nologin = false
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+-
+ 				}
+ 			},
+ 			connectSocketInit: function() {
+diff --git a/uni-client/pages2/components/three-level-linkage/linkage.vue b/uni-client/pages2/components/three-level-linkage/linkage.vue
+index 60d1c58..5a7267a 100644
+--- a/uni-client/pages2/components/three-level-linkage/linkage.vue
++++ b/uni-client/pages2/components/three-level-linkage/linkage.vue
+@@ -153,9 +153,6 @@
+ 					
+ 					this.erji = this.firstLevel[0].regionCode
+ 					this.pullings()
+-				}else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pullings() {
+@@ -185,9 +182,6 @@
+ 					this.obj.nameing = this.obj.regionName1 + '-' + this.secondLevel[0].regionName
+ 
+ 
+-				}else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 		
+diff --git a/uni-client/pages2/components/three-level-linkage/linkages.vue b/uni-client/pages2/components/three-level-linkage/linkages.vue
+index 1db230f..a587b81 100644
+--- a/uni-client/pages2/components/three-level-linkage/linkages.vue
++++ b/uni-client/pages2/components/three-level-linkage/linkages.vue
+@@ -153,9 +153,6 @@
+ 					this.firstLevel = res.data.data
+ 					this.erji = res.data.data[0].regionCode
+ 					this.pulling()
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pulls(obj) {
+@@ -188,9 +185,6 @@
+ 					this.erji = this.firstLevel[0].regionCode
+ 					this.obj.index = obj.index
+ 					this.pullings()
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pullings() {
+@@ -220,9 +214,6 @@
+ 					this.obj.nameing = this.obj.regionName1 + '-' + this.secondLevel[0].regionName
+ 
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pulling() {
+@@ -252,9 +243,6 @@
+ 					this.obj.regionName2 = this.secondLevel[0].regionName
+ 					this.obj.nameing = this.obj.regionName1 + '-' + this.obj.regionName2
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			init() {
+diff --git a/uni-client/pages2/school/selectSchool.vue b/uni-client/pages2/school/selectSchool.vue
+index 9507d8d..57aa0dd 100644
+--- a/uni-client/pages2/school/selectSchool.vue
++++ b/uni-client/pages2/school/selectSchool.vue
+@@ -81,9 +81,6 @@
+ 						
+ 					}
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			left() {
+diff --git a/uni-client/pagescommunity/components/Detail.vue b/uni-client/pagescommunity/components/Detail.vue
+index 286899a..60cc7f8 100644
+--- a/uni-client/pagescommunity/components/Detail.vue
++++ b/uni-client/pagescommunity/components/Detail.vue
+@@ -187,14 +187,11 @@
+ 						praiseType
+ 					}
+ 				}).then(res => {
+-					if (res.data.code == "200") {
++					if (res.data.code == 200) {
+ 						callback();
+-					} else if (res.data.code == "10006") {
++					} else if (res.data.code == 10006) {
+ 						console.log("报错了：" + res.data.code)
+ 						this.isLoginPop = true;
+-					}else {
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+ 					}
+ 					
+ 				})
+@@ -221,17 +218,14 @@
+ 							content: this.inputVal
+ 						}
+ 					}).then(res => {
+-						if (res.data.code == "200") {
++						if (res.data.code == 200) {
+ 							this.$refs.commontRef.close()
+ 							this.inputVal = ''
+ 							// this.$emit("refresh2",data.row.id)
+ 							this.$emit("refresh")
+-						} else if (res.data.code == "10006") {
++						} else if (res.data.code == 10006) {
+ 							console.log("报错了：" + res.data.code)
+ 							this.isLoginPop = true;
+-						}else {
+-							this.tipMsg = res.data.msg;
+-							this.$refs.elm.showDialog();
+ 						}
+ 						
+ 					})
+@@ -245,17 +239,14 @@
+ 							content: this.inputVal
+ 						}
+ 					}).then(res => {
+-						if (res.data.code == "200") {
++						if (res.data.code == 200) {
+ 							this.$refs.commontRef.close()
+ 							this.inputVal = ''
+ 							// this.$emit("refresh2",data.row.id)
+ 							this.$emit("refresh")
+-						} else if (res.data.code == "10006") {
++						} else if (res.data.code == 10006) {
+ 							console.log("报错了：" + res.data.code)
+ 							this.isLoginPop = true;
+-						}else {
+-							this.tipMsg = res.data.msg;
+-							this.$refs.elm.showDialog();
+ 						}
+ 						
+ 					})
+@@ -269,16 +260,13 @@
+ 							content: this.inputVal
+ 						}
+ 					}).then(res => {
+-						if (res.data.code == "200") {
++						if (res.data.code == 200) {
+ 							this.$refs.commontRef.close()
+ 							this.inputVal = ''
+ 							this.$emit("refresh")
+-						} else if (res.data.code == "10006") {
++						} else if (res.data.code == 10006) {
+ 							console.log("报错了：" + res.data.code)
+ 							this.isLoginPop = true;
+-						}else {
+-							this.tipMsg = res.data.msg;
+-							this.$refs.elm.showDialog();
+ 						}
+ 						
+ 					})
+@@ -494,9 +482,6 @@
+ 					uni.reLaunch({
+ 						url: '/pagesintroduction/selfIntroduction?code=' + code
+ 					});
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			generateRandomString(length) {
+diff --git a/uni-client/pagescommunity/newsRelease/newsRelease.vue b/uni-client/pagescommunity/newsRelease/newsRelease.vue
+index 8a7a8a7..7799ab3 100644
+--- a/uni-client/pagescommunity/newsRelease/newsRelease.vue
++++ b/uni-client/pagescommunity/newsRelease/newsRelease.vue
+@@ -72,19 +72,14 @@
+ 					withLoading: true,
+ 					method: 'post',
+ 				}).then(res => {
+-					if (res.data.code == "200") {
++					if (res.data.code == 200) {
+ 						uni.setStorageSync("isRefresh", true)
+ 						uni.navigateBack({
+ 							delta: 1
+ 						})
+-					} else if (res.data.code == "10006") {
++					} else if (res.data.code == 10006) {
+                            this.isLoginPop=true
+-					} else {
+-						this.tipMsg = res.data.msg
+-						this.$refs.elm.showDialog();
+-						return;
+ 					}
+-
+ 				})
+ 			},
+ 			// 删除图片
+@@ -227,9 +222,6 @@
+ 					uni.reLaunch({
+ 						url: '/pagesintroduction/selfIntroduction?code=' + code
+ 					});
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			generateRandomString(length) {
+diff --git a/uni-client/pagesintroduction/aboutme/aboutme.vue b/uni-client/pagesintroduction/aboutme/aboutme.vue
+index 8510edb..0b2f14a 100644
+--- a/uni-client/pagesintroduction/aboutme/aboutme.vue
++++ b/uni-client/pagesintroduction/aboutme/aboutme.vue
+@@ -181,9 +181,6 @@
+ 					setTimeout(() => {
+ 						this.getUserInfos(resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户");
+ 					}, 1000);
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elmp.showDialog();
+ 				}
+ 			},
+ 			getUserInfos(nickName) {
+@@ -235,9 +232,6 @@
+ 					uni.setStorageSync('info', info);
+ 					uni.setStorageSync('token', res.data.data.token);
+ 					this.$refs.elm.showDialog();
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elmp.showDialog();
+ 				}
+ 			},
+ 			bindChange(val) {
+diff --git a/uni-client/pagesintroduction/components/three-level-linkage/linkage.vue b/uni-client/pagesintroduction/components/three-level-linkage/linkage.vue
+index 262aa40..26f153a 100644
+--- a/uni-client/pagesintroduction/components/three-level-linkage/linkage.vue
++++ b/uni-client/pagesintroduction/components/three-level-linkage/linkage.vue
+@@ -153,9 +153,6 @@
+ 
+ 					this.erji = this.firstLevel[0].regionCode
+ 					this.pullings()
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pullings() {
+@@ -185,9 +182,6 @@
+ 					this.obj.nameing = this.obj.regionName1 + '-' + this.secondLevel[0].regionName
+ 
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 
+diff --git a/uni-client/pagesintroduction/components/three-level-linkage/linkages.vue b/uni-client/pagesintroduction/components/three-level-linkage/linkages.vue
+index 1db230f..1b439f1 100644
+--- a/uni-client/pagesintroduction/components/three-level-linkage/linkages.vue
++++ b/uni-client/pagesintroduction/components/three-level-linkage/linkages.vue
+@@ -153,9 +153,6 @@
+ 					this.firstLevel = res.data.data
+ 					this.erji = res.data.data[0].regionCode
+ 					this.pulling()
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pulls(obj) {
+@@ -188,9 +185,6 @@
+ 					this.erji = this.firstLevel[0].regionCode
+ 					this.obj.index = obj.index
+ 					this.pullings()
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pullings() {
+@@ -217,12 +211,9 @@
+ 					this.obj.parentCode2 = this.secondLevel[0].parentCode
+ 					this.obj.regionCode2 = this.secondLevel[0].regionCode
+ 					this.obj.regionName2 = this.secondLevel[0].regionName
+-					this.obj.nameing = this.obj.regionName1 + '-' + this.secondLevel[0].regionName
++					this.obj.nameing = this.obj.regionName1 + '-' + this.obj.regionName2
+ 
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pulling() {
+@@ -252,9 +243,6 @@
+ 					this.obj.regionName2 = this.secondLevel[0].regionName
+ 					this.obj.nameing = this.obj.regionName1 + '-' + this.obj.regionName2
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			init() {
+diff --git a/uni-client/pagesintroduction/selectSchool/selectSchool.vue b/uni-client/pagesintroduction/selectSchool/selectSchool.vue
+index e7d6e2c..447ac8c 100644
+--- a/uni-client/pagesintroduction/selectSchool/selectSchool.vue
++++ b/uni-client/pagesintroduction/selectSchool/selectSchool.vue
+@@ -93,9 +93,6 @@
+ 						
+ 					}
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			left() {
+diff --git a/uni-client/pageslike/like/userInfo.vue b/uni-client/pageslike/like/userInfo.vue
+index 4ba1349..1a8bc67 100644
+--- a/uni-client/pageslike/like/userInfo.vue
++++ b/uni-client/pageslike/like/userInfo.vue
+@@ -437,9 +437,6 @@
+ 				}).then(res => {
+ 					if (res.data.code == 200) {
+ 						this.getUserInfo();
+-					} else {
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+ 					}
+ 				})
+ 			},
+@@ -546,8 +543,6 @@
+ 						console.log("匹配结束2：" + userId)
+ 						this.getUserInfo();
+ 					} else {
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+ 						this.showBtn = true;
+ 					}
+ 				})
+@@ -636,9 +631,6 @@
+ 					uni.reLaunch({
+ 						url: '/pagesintroduction/selfIntroduction?code=' + code
+ 					});
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			backbar() {
+diff --git a/uni-client/pageslogin/index/index.vue b/uni-client/pageslogin/index/index.vue
+index d293723..d44072c 100644
+--- a/uni-client/pageslogin/index/index.vue
++++ b/uni-client/pageslogin/index/index.vue
+@@ -145,9 +145,6 @@
+ 				} else if (res.data.code == 11002) {
+ 					this.tipsShow = true;
+ 					this.num = 1;
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			handleNoAgree() {
+diff --git a/uni-client/pagesme/components/three-level-linkage/linkage.vue b/uni-client/pagesme/components/three-level-linkage/linkage.vue
+index 6dbcbe5..a86e29d 100644
+--- a/uni-client/pagesme/components/three-level-linkage/linkage.vue
++++ b/uni-client/pagesme/components/three-level-linkage/linkage.vue
+@@ -144,9 +144,6 @@
+ 					
+ 					this.erji = this.firstLevel[0].regionCode
+ 					this.pullings()
+-				}else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pullings() {
+@@ -175,9 +172,6 @@
+ 					this.obj.regionName2 = this.secondLevel[0].regionName
+ 					this.obj.nameing = this.obj.regionName1 + '-' + this.secondLevel[0].regionName
+ 
+-				}else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 		
+diff --git a/uni-client/pagesme/components/three-level-linkage/linkages.vue b/uni-client/pagesme/components/three-level-linkage/linkages.vue
+index ce11f47..d9d8490 100644
+--- a/uni-client/pagesme/components/three-level-linkage/linkages.vue
++++ b/uni-client/pagesme/components/three-level-linkage/linkages.vue
+@@ -153,9 +153,6 @@
+ 					this.firstLevel = res.data.data
+ 					this.erji = res.data.data[0].regionCode
+ 					this.pulling()
+-				}else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pulls(obj) {
+@@ -188,9 +185,6 @@
+ 					this.erji = this.firstLevel[0].regionCode
+ 					this.obj.index = obj.index
+ 					this.pullings()
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pullings() {
+@@ -220,9 +214,6 @@
+ 					this.obj.nameing = this.obj.regionName1 + '-' + this.secondLevel[0].regionName
+ 
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pulling() {
+@@ -252,9 +243,6 @@
+ 					this.obj.regionName2 = this.secondLevel[0].regionName
+ 					this.obj.nameing = this.obj.regionName1 + '-' + this.obj.regionName2
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			init() {
+diff --git a/uni-client/pagesme/me/doubleauth.vue b/uni-client/pagesme/me/doubleauth.vue
+index b96e349..8ddbb7d 100644
+--- a/uni-client/pagesme/me/doubleauth.vue
++++ b/uni-client/pagesme/me/doubleauth.vue
+@@ -68,9 +68,6 @@
+ 				});
+ 				if (res.data.code == 200) {
+ 					this.userInfo = res.data.data
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 		}
+diff --git a/uni-client/pagesme/me/editAbout.vue b/uni-client/pagesme/me/editAbout.vue
+index f73b5ea..7edab21 100644
+--- a/uni-client/pagesme/me/editAbout.vue
++++ b/uni-client/pagesme/me/editAbout.vue
+@@ -115,9 +115,6 @@
+ 								})
+ 								uni.hideLoading()
+ 							}, 1000) */
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			confirm() {
+diff --git a/uni-client/pagesme/me/educationcertification.vue b/uni-client/pagesme/me/educationcertification.vue
+index 101ce69..594c065 100644
+--- a/uni-client/pagesme/me/educationcertification.vue
++++ b/uni-client/pagesme/me/educationcertification.vue
+@@ -75,9 +75,6 @@
+ 					if (res.data.data.educationImgList) {
+ 						that.showList = res.data.data.educationImgList
+ 					}
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			chooseImg(type) {
+@@ -157,9 +154,6 @@
+ 					this.tipMsg = "提交成功";
+ 					this.$refs.elm.showDialog();
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			confirm() {
+diff --git a/uni-client/pagesme/me/identityauthentication.vue b/uni-client/pagesme/me/identityauthentication.vue
+index 0082f59..ccb6a9e 100644
+--- a/uni-client/pagesme/me/identityauthentication.vue
++++ b/uni-client/pagesme/me/identityauthentication.vue
+@@ -53,9 +53,6 @@
+ 
+ 					}
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			chooseImg(type) {
+@@ -138,10 +135,6 @@
+ 					this.isConfirm=true;
+ 					this.tipMsg = "提交成功";
+ 					this.$refs.elm.showDialog();
+-				
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			confirm() {
+diff --git a/uni-client/pagesme/me/improveInformation.vue b/uni-client/pagesme/me/improveInformation.vue
+index 0427be4..202c095 100644
+--- a/uni-client/pagesme/me/improveInformation.vue
++++ b/uni-client/pagesme/me/improveInformation.vue
+@@ -402,9 +402,6 @@
+ 				this.singleNoShow = false;
+ 				if (res.data.code == 200) {
+ 					this.getUserIno();
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			updateAboutMe(e) {
+@@ -448,9 +445,6 @@
+ 					debugger
+ 					this.userInfo = res.data.data;
+ 					this.waitApprovedImg = res.data.data.waitApprovedImg;
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			sliderChange(e) {
+diff --git a/uni-client/pagesme/set/set.vue b/uni-client/pagesme/set/set.vue
+index 02d9bb0..9c435b1 100644
+--- a/uni-client/pagesme/set/set.vue
++++ b/uni-client/pagesme/set/set.vue
+@@ -84,12 +84,6 @@
+ 						uni.switchTab({
+ 							url: '/pageslogin/index/index'
+ 						});
+-						/* uni.reLaunch({
+-							url: '/pageslogin/index/index'
+-						}); */
+-					} else {
+-						this.tipMsg = res.data.msg;
+-						this.$refs.elm.showDialog();
+ 					}
+ 				})
+ 			},
+diff --git a/uni-client/pagespreference/components/three-level-linkage/linkage.vue b/uni-client/pagespreference/components/three-level-linkage/linkage.vue
+index 0f31014..2ee2062 100644
+--- a/uni-client/pagespreference/components/three-level-linkage/linkage.vue
++++ b/uni-client/pagespreference/components/three-level-linkage/linkage.vue
+@@ -154,9 +154,6 @@
+ 
+ 					this.erji = this.firstLevel[0].regionCode
+ 					this.pullings()
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pullings() {
+@@ -186,9 +183,6 @@
+ 					this.obj.nameing = this.obj.regionName1 + '-' + this.secondLevel[0].regionName
+ 
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 
+diff --git a/uni-client/pagespreference/components/three-level-linkage/linkages.vue b/uni-client/pagespreference/components/three-level-linkage/linkages.vue
+index 0885559..86fed21 100644
+--- a/uni-client/pagespreference/components/three-level-linkage/linkages.vue
++++ b/uni-client/pagespreference/components/three-level-linkage/linkages.vue
+@@ -144,9 +144,6 @@
+ 					this.firstLevel = res.data.data
+ 					this.erji = res.data.data[0].regionCode
+ 					this.pulling()
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pulls(obj) {
+@@ -179,9 +176,6 @@
+ 					this.erji = this.firstLevel[0].regionCode
+ 					this.obj.index = obj.index
+ 					this.pullings()
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pullings() {
+@@ -211,9 +205,6 @@
+ 					this.obj.nameing = this.obj.regionName1 + '-' + this.secondLevel[0].regionName
+ 
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			async pulling() {
+@@ -243,9 +234,6 @@
+ 					this.obj.regionName2 = this.secondLevel[0].regionName
+ 					this.obj.nameing = this.obj.regionName1 + '-' + this.obj.regionName2
+ 
+-				} else {
+-					this.tipMsg = res.data.msg;
+-					this.$refs.elm.showDialog();
+ 				}
+ 			},
+ 			init() {
+diff --git a/uni-client/pagespreference/preference/preference.vue b/uni-client/pagespreference/preference/preference.vue
+index 28bef7d..e6637dd 100644
+--- a/uni-client/pagespreference/preference/preference.vue
++++ b/uni-client/pagespreference/preference/preference.vue
+@@ -98,12 +98,8 @@ export default {
+ 						this.list.push(obj);
+ 					});
+ 				}
+-			} else {
+-				this.tipMsg = res.data.msg;
+-				this.$refs.elm.showDialog();
+-			}
+-			this.falg = true;
+-		},
++				this.falg = true;
++			},
+ 
+ 		async addcity() {
+ 			uni.showLoading({
+@@ -130,9 +126,6 @@ export default {
+ 				this.isConfirm = true;
+ 				this.tipMsg = "设置成功";
+ 				this.$refs.elm.showDialog();
+-			} else {
+-				this.tipMsg = res.data.msg;
+-				this.$refs.elm.showDialog();
+ 			}
+ 		},
+ 		clicks(e) {
+diff --git a/uni-client/util/api.js b/uni-client/util/api.js
+index ec0e789..3d5fc22 100644
+--- a/uni-client/util/api.js
++++ b/uni-client/util/api.js
+@@ -37,7 +37,10 @@ export const myRequest = (options) => {
+ 				Authorization:options.withToken? uni.getStorageSync("token"):'',
+ 			},
+ 			success: (res) => {
+-				if (res.data.code == 2) {
++				const code = res.data.code;
++				const msg = res.data.msg;
++
++				if (code == 2) {
+ 					uni.showToast({
+ 						icon: 'none',
+ 						title: '登录失效，请重新登录',
+@@ -48,7 +51,18 @@ export const myRequest = (options) => {
+ 							url:"/pages/tab/index"
+ 						})
+ 					}, 200);
++					reject(res);
++					return;
++				}
++
++				if (code != 200 && code != 10006 && code != 11002 && msg) {
++					uni.showToast({
++						icon: 'none',
++						title: msg,
++						duration: 2000
++					})
+ 				}
++
+ 				resolve(res);
+ 			},
+ 			fail: (err) => {

@@ -72,19 +72,14 @@
 					withLoading: true,
 					method: 'post',
 				}).then(res => {
-					if (res.data.code == "200") {
+					if (res.data.code == 200) {
 						uni.setStorageSync("isRefresh", true)
 						uni.navigateBack({
 							delta: 1
 						})
-					} else if (res.data.code == "10006") {
+					} else if (res.data.code == 10006) {
                            this.isLoginPop=true
-					} else {
-						this.tipMsg = res.data.msg
-						this.$refs.elm.showDialog();
-						return;
 					}
-
 				})
 			},
 			// 删除图片
@@ -227,9 +222,6 @@
 					uni.reLaunch({
 						url: '/pagesintroduction/selfIntroduction?code=' + code
 					});
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			generateRandomString(length) {

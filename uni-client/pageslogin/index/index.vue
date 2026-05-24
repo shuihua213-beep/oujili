@@ -145,9 +145,6 @@
 				} else if (res.data.code == 11002) {
 					this.tipsShow = true;
 					this.num = 1;
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			handleNoAgree() {

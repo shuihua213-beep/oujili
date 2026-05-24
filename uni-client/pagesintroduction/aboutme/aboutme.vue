@@ -181,9 +181,6 @@
 					setTimeout(() => {
 						this.getUserInfos(resinfo != 'null' ? resinfo.userInfo.nickName : "匿名用户");
 					}, 1000);
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elmp.showDialog();
 				}
 			},
 			getUserInfos(nickName) {
@@ -235,9 +232,6 @@
 					uni.setStorageSync('info', info);
 					uni.setStorageSync('token', res.data.data.token);
 					this.$refs.elm.showDialog();
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elmp.showDialog();
 				}
 			},
 			bindChange(val) {

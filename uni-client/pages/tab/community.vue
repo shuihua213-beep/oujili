@@ -168,9 +168,6 @@
 						let idx = this.arr.findIndex(item => item.id == value.id)
 						this.arr.splice(idx, 1)
 						this.total -= 1
-					} else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
 					}
 
 				})
@@ -199,15 +196,10 @@
 					withToken: true,
 					method: 'PUT',
 				}).then(res => {
-					if (res.data.code == "200") {
+					if (res.data.code == 200) {
 						obj.isLike = !value.isLike
 						let idx = this.arr.findIndex(item => item.id == obj.id)
 						this.arr.splice(idx, 1, obj)
-					} else {
-						console.log(res.data.msg)
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
-						return;
 					}
 
 				})
@@ -354,9 +346,6 @@
 					uni.reLaunch({
 						url: '/pagesintroduction/selfIntroduction?code=' + code
 					});
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			confirm() {

@@ -120,13 +120,9 @@
 					method: 'DELETE',
 				}).then(res => {
 					
-					if (res.data.code == "200") {
+					if (res.data.code == 200) {
 						let idx = this.dataList.findIndex(item => item.id == value.id)
 						this.dataList.splice(idx, 1)
-					}
-					else{
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
 					}
 					
 				})
@@ -154,19 +150,14 @@
 					withToken: true,
 					method: 'PUT',
 				}).then(res => {
-					if (res.data.code == "200") {
+					if (res.data.code == 200) {
 						obj.isLike = !value.isLike
 						let idx = this.dataList.findIndex(item => item.id == obj.id)
 						this.dataList.splice(idx, 1, obj)
-					} else if(res.data.code == "10006"){
+					} else if(res.data.code == 10006){
 						console.log("报错了："+res.data.code)
 						this.chilkLog=true;
 					}
-					else{
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
-					}
-
 				})
 			},
 			// 接收父组件传过来的刷新列表要求
@@ -331,9 +322,6 @@
 					uni.reLaunch({
 						url: '/pagesintroduction/selfIntroduction?code=' + code
 					});
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			confirm() {

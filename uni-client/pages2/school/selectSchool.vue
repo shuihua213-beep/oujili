@@ -81,9 +81,6 @@
 						
 					}
 
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			left() {

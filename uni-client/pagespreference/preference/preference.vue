@@ -98,12 +98,8 @@ export default {
 						this.list.push(obj);
 					});
 				}
-			} else {
-				this.tipMsg = res.data.msg;
-				this.$refs.elm.showDialog();
-			}
-			this.falg = true;
-		},
+				this.falg = true;
+			},
 
 		async addcity() {
 			uni.showLoading({
@@ -129,9 +125,6 @@ export default {
 			if (res.data.code == 200) {
 				this.isConfirm = true;
 				this.tipMsg = "设置成功";
-				this.$refs.elm.showDialog();
-			} else {
-				this.tipMsg = res.data.msg;
 				this.$refs.elm.showDialog();
 			}
 		},

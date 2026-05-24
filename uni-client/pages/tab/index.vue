@@ -513,8 +513,6 @@
 						}
 
 					} else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
 						this.showBtn = true;
 					}
 				})
@@ -616,9 +614,6 @@
 					uni.reLaunch({
 						url: '/pagesintroduction/selfIntroduction?code=' + code
 					});
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			getRecUserInfo() {
@@ -669,9 +664,6 @@
 								`console.log("获取用户信息完成") 用户id${res.data.data.id}****剩余次数${res.data.data.surplusNum}`
 							);
 						}
-					} else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
 					}
 				})
 			},

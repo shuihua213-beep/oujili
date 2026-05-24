@@ -402,9 +402,6 @@
 				this.singleNoShow = false;
 				if (res.data.code == 200) {
 					this.getUserIno();
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			updateAboutMe(e) {
@@ -448,9 +445,6 @@
 					debugger
 					this.userInfo = res.data.data;
 					this.waitApprovedImg = res.data.data.waitApprovedImg;
-				} else {
-					this.tipMsg = res.data.msg;
-					this.$refs.elm.showDialog();
 				}
 			},
 			sliderChange(e) {
