@@ -16,6 +16,8 @@ export const AMAPKEY = 'cdd98f785c3d27a17bf4d7022783ede9'; //高德定位APP
 // #endif
 
 
+const pendingRequests = new Map();
+
 export const myRequest = (options) => {
 	if (options && options.withToken) {
 		options.data = {
@@ -28,8 +30,30 @@ export const myRequest = (options) => {
 		});
 	}
 	
+	const requestKey = options.cancelKey || `${options.url}_${JSON.stringify(options.data || {})}`;
+
 	return new Promise((resolve, reject) => {
-		uni.request({
+		if (pendingRequests.has(requestKey)) {
+			const prevReq = pendingRequests.get(requestKey);
+			prevReq.task.abort();
+		}
+
+		const currentReq = {
+			resolves: [],
+			rejects: [],
+			task: null
+		};
+
+		if (pendingRequests.has(requestKey)) {
+			currentReq.resolves = pendingRequests.get(requestKey).resolves;
+			currentReq.rejects = pendingRequests.get(requestKey).rejects;
+		}
+
+		currentReq.resolves.push(resolve);
+		currentReq.rejects.push(reject);
+		pendingRequests.set(requestKey, currentReq);
+
+		currentReq.task = uni.request({
 			url: BASE_URL + "/"+options.url,
 			method: options.method || "GET",
 			data: options.data || {},
@@ -49,13 +73,24 @@ export const myRequest = (options) => {
 						})
 					}, 200);
 				}
-				resolve(res);
+				if (pendingRequests.get(requestKey) === currentReq) {
+					pendingRequests.delete(requestKey);
+					currentReq.resolves.forEach(r => r(res));
+				}
 			},
 			fail: (err) => {
+				if (err && err.errMsg && err.errMsg.indexOf('abort') !== -1) {
+					return;
+				}
 				uni.showToast({
 					title: "请求接口失败",
 				});
-				reject(err);
+				if (pendingRequests.get(requestKey) === currentReq) {
+					pendingRequests.delete(requestKey);
+					currentReq.rejects.forEach(r => r(err));
+				} else {
+					reject(err);
+				}
 			},
 			complete() {
 				uni.hideLoading();

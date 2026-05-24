@@ -634,6 +634,7 @@
 				this.$myRequest({
 					url: 'nostalgia/fruser/recommendUserInfo',
 					withToken: loginType,
+					cancelKey: 'recommendUserInfo',
 					data: {
 						age,
 						gender: this.gender == undefined ? "FEMALE" : this.gender
