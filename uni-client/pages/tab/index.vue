@@ -640,6 +640,12 @@
 					},
 					method: 'GET'
 				}).then(res => {
+					// 如果是被取消的请求，直接忽略
+					if (res.__isCancelled) {
+						console.log("请求被取消，忽略该响应");
+						return;
+					}
+					
 					console.log("获取用户信息完成")
 					if (res.data.code == 200) {
 						if (res.data.data == null) {
