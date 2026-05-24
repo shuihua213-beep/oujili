@@ -1,0 +1,51 @@
+diff --git a/uni-client/components/elm-toast/index.vue b/uni-client/components/elm-toast/index.vue
+index fef92ca..e5f2a01 100644
+--- a/uni-client/components/elm-toast/index.vue
++++ b/uni-client/components/elm-toast/index.vue
+@@ -1,5 +1,5 @@
+ <template>
+-	<view class="dialog_box" v-if="show">
++	<view class="dialog_box" v-if="show && msg !== 'NO_TOAST'">
+ 		<view class="bg"></view>
+ 		<view class="dialog_content">
+ 			<view class="bag">
+@@ -32,9 +32,20 @@
+ 				show: false
+ 			};
+ 		},
++		watch: {
++			msg(newVal) {
++				if (newVal === 'NO_TOAST') {
++					this.show = false;
++				}
++			}
++		},
+ 		onLoad() {},
+ 		methods: {
+ 			showDialog() {
++				if (this.msg === 'NO_TOAST') {
++					this.show = false;
++					return;
++				}
+ 				this.show = true;
+ 			},
+ 			hideDialog() {
+diff --git a/uni-client/util/api.js b/uni-client/util/api.js
+index ec0e789..bd7716e 100644
+--- a/uni-client/util/api.js
++++ b/uni-client/util/api.js
+@@ -48,6 +48,14 @@ export const myRequest = (options) => {
+ 							url:"/pages/tab/index"
+ 						})
+ 					}, 200);
++					res.data.msg = 'NO_TOAST';
++				} else if (res.data.code !== undefined && res.data.code != 200 && res.data.code != 11002 && res.data.code != 11003 && res.data.code != 10006) {
++					uni.showToast({
++						icon: 'none',
++						title: res.data.msg || '请求失败',
++						duration: 2000
++					});
++					res.data.msg = 'NO_TOAST';
+ 				}
+ 				resolve(res);
+ 			},

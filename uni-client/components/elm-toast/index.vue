@@ -1,5 +1,5 @@
 <template>
-	<view class="dialog_box" v-if="show">
+	<view class="dialog_box" v-if="show && msg !== 'NO_TOAST'">
 		<view class="bg"></view>
 		<view class="dialog_content">
 			<view class="bag">
@@ -32,9 +32,20 @@
 				show: false
 			};
 		},
+		watch: {
+			msg(newVal) {
+				if (newVal === 'NO_TOAST') {
+					this.show = false;
+				}
+			}
+		},
 		onLoad() {},
 		methods: {
 			showDialog() {
+				if (this.msg === 'NO_TOAST') {
+					this.show = false;
+					return;
+				}
 				this.show = true;
 			},
 			hideDialog() {

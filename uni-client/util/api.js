@@ -48,6 +48,14 @@ export const myRequest = (options) => {
 							url:"/pages/tab/index"
 						})
 					}, 200);
+					res.data.msg = 'NO_TOAST';
+				} else if (res.data.code !== undefined && res.data.code != 200 && res.data.code != 11002 && res.data.code != 11003 && res.data.code != 10006) {
+					uni.showToast({
+						icon: 'none',
+						title: res.data.msg || '请求失败',
+						duration: 2000
+					});
+					res.data.msg = 'NO_TOAST';
 				}
 				resolve(res);
 			},
