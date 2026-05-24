@@ -54,12 +54,11 @@ public class WxPayServiceImpl extends IWxPayServiceImpl<PayRequest> {
                 payOrderData.setBody("思君币");
                 String outTradeNo = MsfCommonTool.UUID();
                 payOrderData.setOutTradeNo(outTradeNo);
-                payOrderData.setTotalFee(1);//payMoneyResponse.getPrice() * 100);
+                payOrderData.setTotalFee(1);
                 Map<String, Object> attach = new HashMap<>();
                 attach.put("userId", TokenUtils.getOwnerId());
                 payOrderData.setAttach(JSON.toJSONString(attach));
 
-                //保存订单
                 PayOrderEntity payOrderEntity = new PayOrderEntity();
                 payOrderEntity.setOutTradeNo(outTradeNo);
                 payOrderEntity.setStatus(PayOrderStatusEnum.PRE_PAY);
@@ -87,29 +86,31 @@ public class WxPayServiceImpl extends IWxPayServiceImpl<PayRequest> {
         Wrapper<PayOrderEntity> queryWrapper = new QueryWrapper<PayOrderEntity>().lambda()
                 .eq(PayOrderEntity::getOutTradeNo, request.getOutTradeNo());
         PayOrderEntity payOrderEntity = payOrderService.getBaseMapper().selectOne(queryWrapper);
-        if (payOrderEntity != null && PayOrderStatusEnum.PRE_PAY.equals(payOrderEntity.getStatus())) {
+        if (payOrderEntity == null || !PayOrderStatusEnum.PRE_PAY.equals(payOrderEntity.getStatus())) {
+            return;
+        }
+        if (!payOrderService.markSuccessIfPrePay(request.getOutTradeNo())) {
+            return;
+        }
 
-            String menuValue = msfConfigService.getValueByCode(SysConfigCodeEnum.payMenuList.name());
-            if (StringUtils.isNotBlank(menuValue)) {
-                List<PayMoneyResponse> moneyResponseList = JSON.parseArray(menuValue, PayMoneyResponse.class);
-                PayMoneyResponse payMoneyResponse = moneyResponseList.stream().filter(p -> p.getPrice() != null && p.getPrice().equals(payOrderEntity.getProductNo())).findFirst().orElse(null);
-                if (payMoneyResponse != null) {
-                    String attach = request.getAttach();
-                    JSONObject jsonObject = JSONObject.parseObject(attach);
-                    Integer userId = jsonObject.getInteger("userId");
-                    log.info("回调方法,userId:{},金币数量{}", userId, payMoneyResponse.getAmount());
-                    FrUserEntity frUserEntity = frUserService.getById(userId);
-                    if (frUserEntity != null && frUserEntity.getGoldBalance() != null) {
-                        frUserEntity.setGoldBalance(frUserEntity.getGoldBalance() + payMoneyResponse.getAmount());
-                        log.info("回调方法,修改用户信息{}", JSON.toJSONString(frUserEntity));
-                        frUserService.saveOrUpdate(frUserEntity);
-                    }
-                } else {
-                    log.info("回调方法,没有查到菜单");
+        String menuValue = msfConfigService.getValueByCode(SysConfigCodeEnum.payMenuList.name());
+        if (StringUtils.isNotBlank(menuValue)) {
+            List<PayMoneyResponse> moneyResponseList = JSON.parseArray(menuValue, PayMoneyResponse.class);
+            PayMoneyResponse payMoneyResponse = moneyResponseList.stream().filter(p -> p.getPrice() != null && p.getPrice().equals(payOrderEntity.getProductNo())).findFirst().orElse(null);
+            if (payMoneyResponse != null) {
+                String attach = request.getAttach();
+                JSONObject jsonObject = JSONObject.parseObject(attach);
+                Integer userId = jsonObject.getInteger("userId");
+                log.info("回调方法,userId:{},金币数量{}", userId, payMoneyResponse.getAmount());
+                FrUserEntity frUserEntity = frUserService.getById(userId);
+                if (frUserEntity != null && frUserEntity.getGoldBalance() != null) {
+                    frUserEntity.setGoldBalance(frUserEntity.getGoldBalance() + payMoneyResponse.getAmount());
+                    log.info("回调方法,修改用户信息{}", JSON.toJSONString(frUserEntity));
+                    frUserService.saveOrUpdate(frUserEntity);
                 }
+            } else {
+                log.info("回调方法,没有查到菜单");
             }
-            payOrderEntity.setStatus(PayOrderStatusEnum.SUCCESS);
-            payOrderService.saveOrUpdate(payOrderEntity);
         }
     }
 
@@ -124,12 +125,11 @@ public class WxPayServiceImpl extends IWxPayServiceImpl<PayRequest> {
                 payOrderData.setBody("思君币");
                 String outTradeNo = MsfCommonTool.UUID();
                 payOrderData.setOutTradeNo(outTradeNo);
-                payOrderData.setTotalFee(1);//payMoneyResponse.getPrice() * 100);
+                payOrderData.setTotalFee(1);
                 Map<String, Object> attach = new HashMap<>();
                 attach.put("userId", request.getUserId());
                 payOrderData.setAttach(JSON.toJSONString(attach));
 
-                //保存订单
                 PayOrderEntity payOrderEntity = new PayOrderEntity();
                 payOrderEntity.setOutTradeNo(outTradeNo);
                 payOrderEntity.setStatus(PayOrderStatusEnum.PRE_PAY);

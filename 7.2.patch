@@ -1,0 +1,141 @@
+diff --git a/oujili-server/msfast-modules/msfast-nostalgia/pom.xml b/oujili-server/msfast-modules/msfast-nostalgia/pom.xml
+index 120af3c..d350f12 100644
+--- a/oujili-server/msfast-modules/msfast-nostalgia/pom.xml
++++ b/oujili-server/msfast-modules/msfast-nostalgia/pom.xml
+@@ -46,6 +46,11 @@
+             <artifactId>spring-boot-starter-test</artifactId>
+             <scope>test</scope>
+         </dependency>
++        <dependency>
++            <groupId>com.h2database</groupId>
++            <artifactId>h2</artifactId>
++            <scope>test</scope>
++        </dependency>
+         <dependency>
+             <groupId>com.wxmblog</groupId>
+             <artifactId>msfast-base-auth</artifactId>
+diff --git a/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/PayOrderService.java b/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/PayOrderService.java
+index 501979d..38119d8 100644
+--- a/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/PayOrderService.java
++++ b/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/PayOrderService.java
+@@ -13,5 +13,5 @@ import com.wxmblog.nostalgia.entity.PayOrderEntity;
+  */
+ public interface PayOrderService extends IService<PayOrderEntity> {
+ 
++    boolean markSuccessIfPrePay(String outTradeNo);
+ }
+-
+diff --git a/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/PayOrderServiceImpl.java b/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/PayOrderServiceImpl.java
+index 2808945..8808a8c 100644
+--- a/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/PayOrderServiceImpl.java
++++ b/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/PayOrderServiceImpl.java
+@@ -1,13 +1,23 @@
+ package com.wxmblog.nostalgia.service.impl;
+ 
++import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
++import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
++import com.wxmblog.nostalgia.common.enums.user.PayOrderStatusEnum;
+ import com.wxmblog.nostalgia.dao.PayOrderDao;
+ import com.wxmblog.nostalgia.entity.PayOrderEntity;
+ import com.wxmblog.nostalgia.service.PayOrderService;
+ import org.springframework.stereotype.Service;
+-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+ 
+ 
+ @Service("payOrderService")
+ public class PayOrderServiceImpl extends ServiceImpl<PayOrderDao, PayOrderEntity> implements PayOrderService {
+ 
++    @Override
++    public boolean markSuccessIfPrePay(String outTradeNo) {
++        LambdaUpdateWrapper<PayOrderEntity> updateWrapper = new LambdaUpdateWrapper<>();
++        updateWrapper.eq(PayOrderEntity::getOutTradeNo, outTradeNo)
++                .eq(PayOrderEntity::getStatus, PayOrderStatusEnum.PRE_PAY)
++                .set(PayOrderEntity::getStatus, PayOrderStatusEnum.SUCCESS);
++        return this.update(updateWrapper);
++    }
+ }
+diff --git a/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/WxPayServiceImpl.java b/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/WxPayServiceImpl.java
+index 6f6ff90..1f9982b 100644
+--- a/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/WxPayServiceImpl.java
++++ b/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/WxPayServiceImpl.java
+@@ -54,12 +54,11 @@ public class WxPayServiceImpl extends IWxPayServiceImpl<PayRequest> {
+                 payOrderData.setBody("思君币");
+                 String outTradeNo = MsfCommonTool.UUID();
+                 payOrderData.setOutTradeNo(outTradeNo);
+-                payOrderData.setTotalFee(1);//payMoneyResponse.getPrice() * 100);
++                payOrderData.setTotalFee(1);
+                 Map<String, Object> attach = new HashMap<>();
+                 attach.put("userId", TokenUtils.getOwnerId());
+                 payOrderData.setAttach(JSON.toJSONString(attach));
+ 
+-                //保存订单
+                 PayOrderEntity payOrderEntity = new PayOrderEntity();
+                 payOrderEntity.setOutTradeNo(outTradeNo);
+                 payOrderEntity.setStatus(PayOrderStatusEnum.PRE_PAY);
+@@ -87,29 +86,31 @@ public class WxPayServiceImpl extends IWxPayServiceImpl<PayRequest> {
+         Wrapper<PayOrderEntity> queryWrapper = new QueryWrapper<PayOrderEntity>().lambda()
+                 .eq(PayOrderEntity::getOutTradeNo, request.getOutTradeNo());
+         PayOrderEntity payOrderEntity = payOrderService.getBaseMapper().selectOne(queryWrapper);
+-        if (payOrderEntity != null && PayOrderStatusEnum.PRE_PAY.equals(payOrderEntity.getStatus())) {
+-
+-            String menuValue = msfConfigService.getValueByCode(SysConfigCodeEnum.payMenuList.name());
+-            if (StringUtils.isNotBlank(menuValue)) {
+-                List<PayMoneyResponse> moneyResponseList = JSON.parseArray(menuValue, PayMoneyResponse.class);
+-                PayMoneyResponse payMoneyResponse = moneyResponseList.stream().filter(p -> p.getPrice() != null && p.getPrice().equals(payOrderEntity.getProductNo())).findFirst().orElse(null);
+-                if (payMoneyResponse != null) {
+-                    String attach = request.getAttach();
+-                    JSONObject jsonObject = JSONObject.parseObject(attach);
+-                    Integer userId = jsonObject.getInteger("userId");
+-                    log.info("回调方法,userId:{},金币数量{}", userId, payMoneyResponse.getAmount());
+-                    FrUserEntity frUserEntity = frUserService.getById(userId);
+-                    if (frUserEntity != null && frUserEntity.getGoldBalance() != null) {
+-                        frUserEntity.setGoldBalance(frUserEntity.getGoldBalance() + payMoneyResponse.getAmount());
+-                        log.info("回调方法,修改用户信息{}", JSON.toJSONString(frUserEntity));
+-                        frUserService.saveOrUpdate(frUserEntity);
+-                    }
+-                } else {
+-                    log.info("回调方法,没有查到菜单");
++        if (payOrderEntity == null || !PayOrderStatusEnum.PRE_PAY.equals(payOrderEntity.getStatus())) {
++            return;
++        }
++        if (!payOrderService.markSuccessIfPrePay(request.getOutTradeNo())) {
++            return;
++        }
++
++        String menuValue = msfConfigService.getValueByCode(SysConfigCodeEnum.payMenuList.name());
++        if (StringUtils.isNotBlank(menuValue)) {
++            List<PayMoneyResponse> moneyResponseList = JSON.parseArray(menuValue, PayMoneyResponse.class);
++            PayMoneyResponse payMoneyResponse = moneyResponseList.stream().filter(p -> p.getPrice() != null && p.getPrice().equals(payOrderEntity.getProductNo())).findFirst().orElse(null);
++            if (payMoneyResponse != null) {
++                String attach = request.getAttach();
++                JSONObject jsonObject = JSONObject.parseObject(attach);
++                Integer userId = jsonObject.getInteger("userId");
++                log.info("回调方法,userId:{},金币数量{}", userId, payMoneyResponse.getAmount());
++                FrUserEntity frUserEntity = frUserService.getById(userId);
++                if (frUserEntity != null && frUserEntity.getGoldBalance() != null) {
++                    frUserEntity.setGoldBalance(frUserEntity.getGoldBalance() + payMoneyResponse.getAmount());
++                    log.info("回调方法,修改用户信息{}", JSON.toJSONString(frUserEntity));
++                    frUserService.saveOrUpdate(frUserEntity);
+                 }
++            } else {
++                log.info("回调方法,没有查到菜单");
+             }
+-            payOrderEntity.setStatus(PayOrderStatusEnum.SUCCESS);
+-            payOrderService.saveOrUpdate(payOrderEntity);
+         }
+     }
+ 
+@@ -124,12 +125,11 @@ public class WxPayServiceImpl extends IWxPayServiceImpl<PayRequest> {
+                 payOrderData.setBody("思君币");
+                 String outTradeNo = MsfCommonTool.UUID();
+                 payOrderData.setOutTradeNo(outTradeNo);
+-                payOrderData.setTotalFee(1);//payMoneyResponse.getPrice() * 100);
++                payOrderData.setTotalFee(1);
+                 Map<String, Object> attach = new HashMap<>();
+                 attach.put("userId", request.getUserId());
+                 payOrderData.setAttach(JSON.toJSONString(attach));
+ 
+-                //保存订单
+                 PayOrderEntity payOrderEntity = new PayOrderEntity();
+                 payOrderEntity.setOutTradeNo(outTradeNo);
+                 payOrderEntity.setStatus(PayOrderStatusEnum.PRE_PAY);

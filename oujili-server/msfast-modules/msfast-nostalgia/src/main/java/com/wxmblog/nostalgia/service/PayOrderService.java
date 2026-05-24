@@ -13,5 +13,5 @@ import com.wxmblog.nostalgia.entity.PayOrderEntity;
  */
 public interface PayOrderService extends IService<PayOrderEntity> {
 
+    boolean markSuccessIfPrePay(String outTradeNo);
 }
-
