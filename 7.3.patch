@@ -1,0 +1,28 @@
+diff --git a/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/WxPayServiceImpl.java b/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/WxPayServiceImpl.java
+index 6f6ff90..1f4d6ad 100644
+--- a/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/WxPayServiceImpl.java
++++ b/oujili-server/msfast-modules/msfast-nostalgia/src/main/java/com/wxmblog/nostalgia/service/impl/WxPayServiceImpl.java
+@@ -85,7 +85,8 @@ public class WxPayServiceImpl extends IWxPayServiceImpl<PayRequest> {
+ 
+         log.info("回调方法{}", JSONObject.toJSONString(request));
+         Wrapper<PayOrderEntity> queryWrapper = new QueryWrapper<PayOrderEntity>().lambda()
+-                .eq(PayOrderEntity::getOutTradeNo, request.getOutTradeNo());
++                .eq(PayOrderEntity::getOutTradeNo, request.getOutTradeNo())
++                .last("for update");
+         PayOrderEntity payOrderEntity = payOrderService.getBaseMapper().selectOne(queryWrapper);
+         if (payOrderEntity != null && PayOrderStatusEnum.PRE_PAY.equals(payOrderEntity.getStatus())) {
+ 
+@@ -98,7 +99,12 @@ public class WxPayServiceImpl extends IWxPayServiceImpl<PayRequest> {
+                     JSONObject jsonObject = JSONObject.parseObject(attach);
+                     Integer userId = jsonObject.getInteger("userId");
+                     log.info("回调方法,userId:{},金币数量{}", userId, payMoneyResponse.getAmount());
+-                    FrUserEntity frUserEntity = frUserService.getById(userId);
++                    
++                    Wrapper<FrUserEntity> userWrapper = new QueryWrapper<FrUserEntity>().lambda()
++                            .eq(FrUserEntity::getId, userId)
++                            .last("for update");
++                    FrUserEntity frUserEntity = frUserService.getOne(userWrapper);
++                    
+                     if (frUserEntity != null && frUserEntity.getGoldBalance() != null) {
+                         frUserEntity.setGoldBalance(frUserEntity.getGoldBalance() + payMoneyResponse.getAmount());
+                         log.info("回调方法,修改用户信息{}", JSON.toJSONString(frUserEntity));
