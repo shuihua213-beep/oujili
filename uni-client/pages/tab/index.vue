@@ -347,7 +347,10 @@
 				timeoutObj: null,
 				reConnect: true,
 				socketTask: null,
-				chooseimg: false
+				chooseimg: false,
+				recUserRequestPromise: null,
+				recUserNeedRefresh: false,
+				recUserRequestSeq: 0
 			};
 		},
 		onHide() {
@@ -621,59 +624,92 @@
 					this.$refs.elm.showDialog();
 				}
 			},
-			getRecUserInfo() {
-				console.log("开始获取用户信息")
-				// 获取推荐用户信息
+			getRecommendUserRequestOptions() {
 				let age = 20;
 				if (this.age) {
 					age = util.mymethod(uni.getStorageSync('itemobj').birthday);
 				}
-				let loginType;
-				uni.getStorageSync('token') ? (loginType = true) : (loginType = false);
+				const loginType = !!uni.getStorageSync('token');
+				const gender = this.gender == undefined ? 'FEMALE' : this.gender;
+				return {
+					loginType,
+					requestKey: `nostalgia/fruser/recommendUserInfo:${loginType}:${age}:${gender}`,
+					requestData: {
+						age,
+						gender
+					}
+				};
+			},
+			applyRecUserInfo(res) {
+				console.log("获取用户信息完成")
+				if (res.data.code == 200) {
+					if (res.data.data == null) {
+						this.showArrowDown = false;
+						this.isInit = false;
+						this.userData = {};
+						this.nextData = {};
+						uni.setTabBarBadge({
+							index: 0,
+							text: '0'
+						});
+					} else {
+						this.showArrowDown = true;
+						this.isInit = true;
+						this.userData = res.data.data;
+						if (this.userData.userArticleViewResponse.articleImg.length > 3) {
+							this.userData.userArticleViewResponse.articleImg = this.userData.userArticleViewResponse.articleImg.slice(0, 3)
+						}
+						uni.setTabBarBadge({
+							index: 0,
+							text: `${res.data.data.surplusNum}`
+						});
 
-				this.$myRequest({
+						this.showBtn = true;
+						console.log(
+							`console.log("获取用户信息完成") 用户id${res.data.data.id}****剩余次数${res.data.data.surplusNum}`
+						);
+					}
+				} else {
+					this.tipMsg = res.data.msg;
+					this.$refs.elm.showDialog();
+				}
+			},
+			getRecUserInfo() {
+				console.log("开始获取用户信息")
+				if (this.recUserRequestPromise) {
+					this.recUserNeedRefresh = true;
+					return this.recUserRequestPromise;
+				}
+				const requestSeq = this.recUserRequestSeq + 1;
+				this.recUserRequestSeq = requestSeq;
+				const {
+					loginType,
+					requestKey,
+					requestData
+				} = this.getRecommendUserRequestOptions();
+				const requestPromise = this.$myRequest({
 					url: 'nostalgia/fruser/recommendUserInfo',
 					withToken: loginType,
-					data: {
-						age,
-						gender: this.gender == undefined ? "FEMALE" : this.gender
-					},
-					method: 'GET'
+					data: requestData,
+					method: 'GET',
+					requestMode: 'share',
+					requestKey
 				}).then(res => {
-					console.log("获取用户信息完成")
-					if (res.data.code == 200) {
-						if (res.data.data == null) {
-							this.showArrowDown = false;
-							this.isInit = false;
-							// this.data = [];
-							this.userData = {};
-							this.nextData = {};
-							uni.setTabBarBadge({
-								index: 0,
-								text: '0'
-							});
-						} else {
-							this.showArrowDown = true;
-							this.isInit = true;
-							this.userData = res.data.data;
-							if(this.userData.userArticleViewResponse.articleImg.length>3){
-								this.userData.userArticleViewResponse.articleImg = this.userData.userArticleViewResponse.articleImg.splice(0,3)
-							}
-							uni.setTabBarBadge({
-								index: 0,
-								text: `${res.data.data.surplusNum}`
-							});
-
-							this.showBtn = true;
-							console.log(
-								`console.log("获取用户信息完成") 用户id${res.data.data.id}****剩余次数${res.data.data.surplusNum}`
-							);
-						}
-					} else {
-						this.tipMsg = res.data.msg;
-						this.$refs.elm.showDialog();
+					if (requestSeq === this.recUserRequestSeq) {
+						this.applyRecUserInfo(res);
 					}
-				})
+					return res;
+				}).finally(() => {
+					if (this.recUserRequestPromise === requestPromise) {
+						this.recUserRequestPromise = null;
+					}
+					if (this.recUserNeedRefresh) {
+						this.recUserNeedRefresh = false;
+						this.getRecUserInfo();
+					}
+				});
+				this.recUserRequestPromise = requestPromise;
+				return requestPromise;
 			},
 			connectSocketInit: function() {
 				let self = this;
