@@ -1,4 +1,3 @@
-
 // #ifdef H5
 export const BASE_URL = `${location.protocol}//${location.host}/wxmapi`
 // #endif
@@ -15,26 +14,24 @@ export const AMAPKEY = '7528e756feaebfabd1abbb1b04097a1e'; //高德定位小程�
 export const AMAPKEY = 'cdd98f785c3d27a17bf4d7022783ede9'; //高德定位APP
 // #endif
 
+const pendingRequests = new Map();
+const DEDUP_KEYS = ['nostalgia/fruser/recommendUserInfo'];
 
-export const myRequest = (options) => {
-	if (options && options.withToken) {
-		options.data = {
-			...options.data
-		};
-	}
-	if(options.withLoading){
-		uni.showLoading({
-			title: '加载中'
-		});
-	}
-	
+const generateRequestKey = (options) => {
+	const url = options.url || '';
+	const data = JSON.stringify(options.data || {});
+	const method = options.method || 'GET';
+	return `${method}:${url}:${data}`;
+};
+
+const createRequest = (options, requestKey, isDedupRequest) => {
 	return new Promise((resolve, reject) => {
 		uni.request({
-			url: BASE_URL + "/"+options.url,
+			url: BASE_URL + "/" + options.url,
 			method: options.method || "GET",
 			data: options.data || {},
 			header: {
-				Authorization:options.withToken? uni.getStorageSync("token"):'',
+				Authorization: options.withToken ? uni.getStorageSync("token") : '',
 			},
 			success: (res) => {
 				if (res.data.code == 2) {
@@ -45,7 +42,7 @@ export const myRequest = (options) => {
 					})
 					setTimeout(() => {
 						uni.reLaunch({
-							url:"/pages/tab/index"
+							url: "/pages/tab/index"
 						})
 					}, 200);
 				}
@@ -59,11 +56,43 @@ export const myRequest = (options) => {
 			},
 			complete() {
 				uni.hideLoading();
+				if (isDedupRequest) {
+					pendingRequests.delete(requestKey);
+				}
 			}
 		});
 	});
 };
-//登录判断
+
+export const myRequest = (options) => {
+	if (options && options.withToken) {
+		options.data = {
+			...options.data
+		};
+	}
+	if (options.withLoading) {
+		uni.showLoading({
+			title: '加载中'
+		});
+	}
+
+	const requestKey = generateRequestKey(options);
+	const isDedupRequest = DEDUP_KEYS.some(key => options.url && options.url.includes(key));
+
+	if (!isDedupRequest) {
+		return createRequest(options, requestKey, false);
+	}
+
+	if (pendingRequests.has(requestKey)) {
+		console.log(`[myRequest] 请求去重，复用已有请求: ${requestKey}`);
+		return pendingRequests.get(requestKey);
+	}
+
+	const requestPromise = createRequest(options, requestKey, true);
+	pendingRequests.set(requestKey, requestPromise);
+	return requestPromise;
+};
+
 export const getId = () => {
 	return new Promise((resolve, reject) => {
 		uni.getStorage({

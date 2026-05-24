@@ -336,18 +336,19 @@
 					}
 				},
 				img: this.$BASE_URL,
-				// bgColor: 'linear-gradient(to bottom, #e8eef6, #eef5f6)',
 				bgColor: '#F4F5F9',
-				base_lsit: [
-
-				],
+				base_lsit: [],
 				data: [],
 				count: 0,
 				ownerId: null,
 				timeoutObj: null,
 				reConnect: true,
 				socketTask: null,
-				chooseimg: false
+				chooseimg: false,
+				isFetchingRecUser: false,
+				lastFetchTime: 0,
+				recUserCache: null,
+				cacheExpiry: 30000
 			};
 		},
 		onHide() {
@@ -623,14 +624,43 @@
 			},
 			getRecUserInfo() {
 				console.log("开始获取用户信息")
-				// 获取推荐用户信息
+				const now = Date.now();
+				if (this.isFetchingRecUser) {
+					console.log("获取用户信息进行中，跳过重复请求")
+					return Promise.resolve();
+				}
+				if (this.recUserCache && (now - this.lastFetchTime) < this.cacheExpiry) {
+					console.log("使用缓存数据，剩余有效时间:", Math.round((this.cacheExpiry - (now - this.lastFetchTime)) / 1000) + "s")
+					this.userData = this.recUserCache;
+					if (this.userData && this.userData.id) {
+						this.showArrowDown = true;
+						this.isInit = true;
+						if (this.userData.userArticleViewResponse && this.userData.userArticleViewResponse.articleImg && this.userData.userArticleViewResponse.articleImg.length > 3) {
+							this.userData.userArticleViewResponse.articleImg = this.userData.userArticleViewResponse.articleImg.splice(0, 3)
+						}
+						uni.setTabBarBadge({
+							index: 0,
+							text: `${this.userData.surplusNum}`
+						});
+						this.showBtn = true;
+					} else {
+						this.showArrowDown = false;
+						this.isInit = false;
+						this.userData = {};
+						uni.setTabBarBadge({
+							index: 0,
+							text: '0'
+						});
+					}
+					return Promise.resolve();
+				}
 				let age = 20;
 				if (this.age) {
 					age = util.mymethod(uni.getStorageSync('itemobj').birthday);
 				}
 				let loginType;
 				uni.getStorageSync('token') ? (loginType = true) : (loginType = false);
-
+				this.isFetchingRecUser = true;
 				this.$myRequest({
 					url: 'nostalgia/fruser/recommendUserInfo',
 					withToken: loginType,
@@ -641,13 +671,14 @@
 					method: 'GET'
 				}).then(res => {
 					console.log("获取用户信息完成")
+					this.isFetchingRecUser = false;
 					if (res.data.code == 200) {
 						if (res.data.data == null) {
 							this.showArrowDown = false;
 							this.isInit = false;
-							// this.data = [];
 							this.userData = {};
 							this.nextData = {};
+							this.recUserCache = null;
 							uni.setTabBarBadge({
 								index: 0,
 								text: '0'
@@ -656,23 +687,28 @@
 							this.showArrowDown = true;
 							this.isInit = true;
 							this.userData = res.data.data;
-							if(this.userData.userArticleViewResponse.articleImg.length>3){
-								this.userData.userArticleViewResponse.articleImg = this.userData.userArticleViewResponse.articleImg.splice(0,3)
+							this.recUserCache = JSON.parse(JSON.stringify(res.data.data));
+							this.lastFetchTime = Date.now();
+							if (this.userData.userArticleViewResponse && this.userData.userArticleViewResponse.articleImg && this.userData.userArticleViewResponse.articleImg.length > 3) {
+								this.userData.userArticleViewResponse.articleImg = this.userData.userArticleViewResponse.articleImg.splice(0, 3)
 							}
 							uni.setTabBarBadge({
 								index: 0,
 								text: `${res.data.data.surplusNum}`
 							});
-
 							this.showBtn = true;
 							console.log(
 								`console.log("获取用户信息完成") 用户id${res.data.data.id}****剩余次数${res.data.data.surplusNum}`
 							);
 						}
 					} else {
+						this.isFetchingRecUser = false;
 						this.tipMsg = res.data.msg;
 						this.$refs.elm.showDialog();
 					}
+				}).catch(err => {
+					console.log("获取用户信息失败", err)
+					this.isFetchingRecUser = false;
 				})
 			},
 			connectSocketInit: function() {
