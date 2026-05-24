@@ -16,6 +16,8 @@ export const AMAPKEY = 'cdd98f785c3d27a17bf4d7022783ede9'; //高德定位APP
 // #endif
 
 
+const requestCounters = {};
+
 export const myRequest = (options) => {
 	if (options && options.withToken) {
 		options.data = {
@@ -27,16 +29,31 @@ export const myRequest = (options) => {
 			title: '加载中'
 		});
 	}
+
+	const method = options.method || "GET";
+	const dataStr = JSON.stringify(options.data || {});
+	const key = method + "::" + options.url + "::" + dataStr;
+	const requestId = (requestCounters[key] = (requestCounters[key] || 0) + 1);
 	
 	return new Promise((resolve, reject) => {
 		uni.request({
 			url: BASE_URL + "/"+options.url,
-			method: options.method || "GET",
+			method: method,
 			data: options.data || {},
 			header: {
 				Authorization:options.withToken? uni.getStorageSync("token"):'',
 			},
 			success: (res) => {
+				if (requestCounters[key] !== requestId) {
+					resolve({
+						...res,
+						data: {
+							...res.data,
+							__canceled: true
+						}
+					});
+					return;
+				}
 				if (res.data.code == 2) {
 					uni.showToast({
 						icon: 'none',
@@ -52,6 +69,15 @@ export const myRequest = (options) => {
 				resolve(res);
 			},
 			fail: (err) => {
+				if (requestCounters[key] !== requestId) {
+					resolve({
+						data: { code: -1, msg: 'canceled', __canceled: true },
+						statusCode: 0,
+						header: {},
+						errMsg: err.errMsg || ''
+					});
+					return;
+				}
 				uni.showToast({
 					title: "请求接口失败",
 				});

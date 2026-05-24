@@ -640,6 +640,7 @@
 					},
 					method: 'GET'
 				}).then(res => {
+					if (res.data.__canceled) return;
 					console.log("获取用户信息完成")
 					if (res.data.code == 200) {
 						if (res.data.data == null) {
