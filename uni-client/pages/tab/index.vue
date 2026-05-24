@@ -347,7 +347,8 @@
 				timeoutObj: null,
 				reConnect: true,
 				socketTask: null,
-				chooseimg: false
+				chooseimg: false,
+				isFetchingRecUser: false // 标记是否正在获取推荐用户
 			};
 		},
 		onHide() {
@@ -623,6 +624,14 @@
 			},
 			getRecUserInfo() {
 				console.log("开始获取用户信息")
+				// 如果已有请求在进行中，直接返回
+				if (this.isFetchingRecUser) {
+					console.log("已有推荐用户请求在进行中，跳过本次请求");
+					return;
+				}
+				
+				this.isFetchingRecUser = true;
+				
 				// 获取推荐用户信息
 				let age = 20;
 				if (this.age) {
@@ -673,6 +682,10 @@
 						this.tipMsg = res.data.msg;
 						this.$refs.elm.showDialog();
 					}
+				}).catch(err => {
+					console.error("获取推荐用户信息失败", err);
+				}).finally(() => {
+					this.isFetchingRecUser = false;
 				})
 			},
 			connectSocketInit: function() {

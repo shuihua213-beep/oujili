@@ -16,19 +16,36 @@ export const AMAPKEY = 'cdd98f785c3d27a17bf4d7022783ede9'; //高德定位APP
 // #endif
 
 
+// 请求去重和管理
+const pendingRequests = new Map();
+
+// 生成请求唯一标识
+const generateRequestKey = (options) => {
+	const dataStr = options.data ? JSON.stringify(options.data) : '';
+	return `${options.method || 'GET'}_${options.url}_${dataStr}`;
+};
+
 export const myRequest = (options) => {
 	if (options && options.withToken) {
 		options.data = {
 			...options.data
 		};
 	}
+	
+	const requestKey = generateRequestKey(options);
+	
+	// 如果请求已在进行中，返回已存在的 Promise
+	if (pendingRequests.has(requestKey)) {
+		return pendingRequests.get(requestKey);
+	}
+	
 	if(options.withLoading){
 		uni.showLoading({
 			title: '加载中'
 		});
 	}
 	
-	return new Promise((resolve, reject) => {
+	const requestPromise = new Promise((resolve, reject) => {
 		uni.request({
 			url: BASE_URL + "/"+options.url,
 			method: options.method || "GET",
@@ -58,10 +75,14 @@ export const myRequest = (options) => {
 				reject(err);
 			},
 			complete() {
+				pendingRequests.delete(requestKey);
 				uni.hideLoading();
 			}
 		});
 	});
+	
+	pendingRequests.set(requestKey, requestPromise);
+	return requestPromise;
 };
 //登录判断
 export const getId = () => {

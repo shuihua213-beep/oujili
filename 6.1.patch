@@ -1,0 +1,97 @@
+diff --git a/uni-client/pages/tab/index.vue b/uni-client/pages/tab/index.vue
+index 8dd4cc8..5e842a1 100644
+--- a/uni-client/pages/tab/index.vue
++++ b/uni-client/pages/tab/index.vue
+@@ -347,7 +347,8 @@
+ 				timeoutObj: null,
+ 				reConnect: true,
+ 				socketTask: null,
+-				chooseimg: false
++				chooseimg: false,
++				isFetchingRecUser: false // 标记是否正在获取推荐用户
+ 			};
+ 		},
+ 		onHide() {
+@@ -623,6 +624,14 @@
+ 			},
+ 			getRecUserInfo() {
+ 				console.log("开始获取用户信息")
++				// 如果已有请求在进行中，直接返回
++				if (this.isFetchingRecUser) {
++					console.log("已有推荐用户请求在进行中，跳过本次请求");
++					return;
++				}
++				
++				this.isFetchingRecUser = true;
++				
+ 				// 获取推荐用户信息
+ 				let age = 20;
+ 				if (this.age) {
+@@ -673,6 +682,10 @@
+ 						this.tipMsg = res.data.msg;
+ 						this.$refs.elm.showDialog();
+ 					}
++				}).catch(err => {
++					console.error("获取推荐用户信息失败", err);
++				}).finally(() => {
++					this.isFetchingRecUser = false;
+ 				})
+ 			},
+ 			connectSocketInit: function() {
+diff --git a/uni-client/util/api.js b/uni-client/util/api.js
+index ec0e789..caeb7ed 100644
+--- a/uni-client/util/api.js
++++ b/uni-client/util/api.js
+@@ -16,19 +16,36 @@ export const AMAPKEY = 'cdd98f785c3d27a17bf4d7022783ede9'; //高德定位APP
+ // #endif
+ 
+ 
++// 请求去重和管理
++const pendingRequests = new Map();
++
++// 生成请求唯一标识
++const generateRequestKey = (options) => {
++	const dataStr = options.data ? JSON.stringify(options.data) : '';
++	return `${options.method || 'GET'}_${options.url}_${dataStr}`;
++};
++
+ export const myRequest = (options) => {
+ 	if (options && options.withToken) {
+ 		options.data = {
+ 			...options.data
+ 		};
+ 	}
++	
++	const requestKey = generateRequestKey(options);
++	
++	// 如果请求已在进行中，返回已存在的 Promise
++	if (pendingRequests.has(requestKey)) {
++		return pendingRequests.get(requestKey);
++	}
++	
+ 	if(options.withLoading){
+ 		uni.showLoading({
+ 			title: '加载中'
+ 		});
+ 	}
+ 	
+-	return new Promise((resolve, reject) => {
++	const requestPromise = new Promise((resolve, reject) => {
+ 		uni.request({
+ 			url: BASE_URL + "/"+options.url,
+ 			method: options.method || "GET",
+@@ -58,10 +75,14 @@ export const myRequest = (options) => {
+ 				reject(err);
+ 			},
+ 			complete() {
++				pendingRequests.delete(requestKey);
+ 				uni.hideLoading();
+ 			}
+ 		});
+ 	});
++	
++	pendingRequests.set(requestKey, requestPromise);
++	return requestPromise;
+ };
+ //登录判断
+ export const getId = () => {
