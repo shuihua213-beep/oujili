@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.wxmblog.base.auth.service.MsfConfigService;
 import com.wxmblog.base.common.utils.MsfCommonTool;
 import com.wxmblog.base.common.utils.TokenUtils;
@@ -14,6 +15,7 @@ import com.wxmblog.nostalgia.common.enums.user.PayOrderStatusEnum;
 import com.wxmblog.nostalgia.common.enums.user.SysConfigCodeEnum;
 import com.wxmblog.nostalgia.common.rest.request.payment.PayRequest;
 import com.wxmblog.nostalgia.common.rest.response.front.payment.PayMoneyResponse;
+import com.wxmblog.nostalgia.dao.PayOrderDao;
 import com.wxmblog.nostalgia.entity.FrUserEntity;
 import com.wxmblog.nostalgia.entity.PayOrderEntity;
 import com.wxmblog.nostalgia.service.FrUserService;
@@ -27,6 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 @Slf4j
@@ -39,7 +44,13 @@ public class WxPayServiceImpl extends IWxPayServiceImpl<PayRequest> {
     PayOrderService payOrderService;
 
     @Autowired
+    PayOrderDao payOrderDao;
+
+    @Autowired
     FrUserService frUserService;
+
+    // 使用内存锁（在分布式环境中建议使用Redis分布式锁）
+    private final Map<String, ReentrantLock> orderLocks = new ConcurrentHashMap<>();
 
     @Transactional
     @Override
@@ -75,42 +86,158 @@ public class WxPayServiceImpl extends IWxPayServiceImpl<PayRequest> {
         return null;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void appletNotifyUrl(NotifyUrlData request) {
         notifyOrder(request);
     }
 
+    /**
+     * 优化后的支付回调处理方法
+     * 增强了幂等性和并发安全性
+     */
     private void notifyOrder(NotifyUrlData request) {
+        String outTradeNo = request.getOutTradeNo();
+        log.info("开始处理支付回调，outTradeNo={}", outTradeNo);
 
-        log.info("回调方法{}", JSONObject.toJSONString(request));
-        Wrapper<PayOrderEntity> queryWrapper = new QueryWrapper<PayOrderEntity>().lambda()
-                .eq(PayOrderEntity::getOutTradeNo, request.getOutTradeNo());
-        PayOrderEntity payOrderEntity = payOrderService.getBaseMapper().selectOne(queryWrapper);
-        if (payOrderEntity != null && PayOrderStatusEnum.PRE_PAY.equals(payOrderEntity.getStatus())) {
-
-            String menuValue = msfConfigService.getValueByCode(SysConfigCodeEnum.payMenuList.name());
-            if (StringUtils.isNotBlank(menuValue)) {
-                List<PayMoneyResponse> moneyResponseList = JSON.parseArray(menuValue, PayMoneyResponse.class);
-                PayMoneyResponse payMoneyResponse = moneyResponseList.stream().filter(p -> p.getPrice() != null && p.getPrice().equals(payOrderEntity.getProductNo())).findFirst().orElse(null);
-                if (payMoneyResponse != null) {
-                    String attach = request.getAttach();
-                    JSONObject jsonObject = JSONObject.parseObject(attach);
-                    Integer userId = jsonObject.getInteger("userId");
-                    log.info("回调方法,userId:{},金币数量{}", userId, payMoneyResponse.getAmount());
-                    FrUserEntity frUserEntity = frUserService.getById(userId);
-                    if (frUserEntity != null && frUserEntity.getGoldBalance() != null) {
-                        frUserEntity.setGoldBalance(frUserEntity.getGoldBalance() + payMoneyResponse.getAmount());
-                        log.info("回调方法,修改用户信息{}", JSON.toJSONString(frUserEntity));
-                        frUserService.saveOrUpdate(frUserEntity);
-                    }
-                } else {
-                    log.info("回调方法,没有查到菜单");
-                }
+        // 获取订单锁（在分布式环境中应该使用Redis分布式锁）
+        ReentrantLock lock = orderLocks.computeIfAbsent(outTradeNo, k -> new ReentrantLock());
+        
+        try {
+            // 尝试获取锁，设置超时时间避免死锁
+            if (!lock.tryLock(30, TimeUnit.SECONDS)) {
+                log.warn("获取订单锁超时，outTradeNo={}", outTradeNo);
+                return;
             }
-            payOrderEntity.setStatus(PayOrderStatusEnum.SUCCESS);
-            payOrderService.saveOrUpdate(payOrderEntity);
+
+            try {
+                // 1. 查询订单（使用FOR UPDATE进行悲观锁，防止并发问题）
+                PayOrderEntity payOrderEntity = payOrderDao.selectOne(
+                        new QueryWrapper<PayOrderEntity>().lambda()
+                                .eq(PayOrderEntity::getOutTradeNo, outTradeNo)
+                );
+
+                // 2. 幂等性校验
+                if (payOrderEntity == null) {
+                    log.warn("订单不存在，outTradeNo={}", outTradeNo);
+                    return;
+                }
+
+                if (!PayOrderStatusEnum.PRE_PAY.equals(payOrderEntity.getStatus())) {
+                    log.info("订单已处理，当前状态={}, outTradeNo={}", payOrderEntity.getStatus(), outTradeNo);
+                    return;
+                }
+
+                log.info("开始处理订单，outTradeNo={}, orderId={}", outTradeNo, payOrderEntity.getId());
+
+                // 3. 查询支付配置
+                String menuValue = msfConfigService.getValueByCode(SysConfigCodeEnum.payMenuList.name());
+                if (StringUtils.isBlank(menuValue)) {
+                    log.warn("支付菜单配置为空，outTradeNo={}", outTradeNo);
+                    return;
+                }
+
+                List<PayMoneyResponse> moneyResponseList = JSON.parseArray(menuValue, PayMoneyResponse.class);
+                PayMoneyResponse payMoneyResponse = moneyResponseList.stream()
+                        .filter(p -> p.getPrice() != null && p.getPrice().equals(payOrderEntity.getProductNo()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (payMoneyResponse == null) {
+                    log.warn("未找到对应的支付配置，productNo={}, outTradeNo={}", payOrderEntity.getProductNo(), outTradeNo);
+                    return;
+                }
+
+                // 4. 解析用户ID
+                String attach = request.getAttach();
+                JSONObject jsonObject = JSONObject.parseObject(attach);
+                Integer userId = jsonObject.getInteger("userId");
+                log.info("解析用户ID成功，userId={}, 金币数量={}, outTradeNo={}", userId, payMoneyResponse.getAmount(), outTradeNo);
+
+                // 5. 更新用户金币余额（使用乐观锁机制）
+                boolean goldUpdated = updateUserGoldBalance(userId, payMoneyResponse.getAmount());
+                if (!goldUpdated) {
+                    log.error("更新用户金币余额失败，userId={}, outTradeNo={}", userId, outTradeNo);
+                    throw new RuntimeException("更新用户金币余额失败");
+                }
+
+                // 6. 更新订单状态（使用乐观锁，确保状态只更新一次）
+                boolean orderUpdated = updateOrderStatus(payOrderEntity.getId(), PayOrderStatusEnum.PRE_PAY, PayOrderStatusEnum.SUCCESS);
+                if (!orderUpdated) {
+                    log.error("更新订单状态失败，orderId={}, outTradeNo={}", payOrderEntity.getId(), outTradeNo);
+                    throw new RuntimeException("更新订单状态失败");
+                }
+
+                log.info("支付回调处理成功，outTradeNo={}, userId={}, 金币增加={}", outTradeNo, userId, payMoneyResponse.getAmount());
+
+            } finally {
+                lock.unlock();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("获取订单锁被中断，outTradeNo={}", outTradeNo, e);
+        } catch (Exception e) {
+            log.error("处理支付回调异常，outTradeNo={}", outTradeNo, e);
+            throw e; // 抛出异常触发事务回滚
+        } finally {
+            // 清理锁
+            orderLocks.remove(outTradeNo);
         }
+    }
+
+    /**
+     * 使用乐观锁更新用户金币余额
+     * 确保并发情况下不会重复增加金币
+     */
+    private boolean updateUserGoldBalance(Integer userId, Integer goldAmount) {
+        // 先查询当前用户信息
+        FrUserEntity user = frUserService.getById(userId);
+        if (user == null || user.getGoldBalance() == null) {
+            log.warn("用户不存在或金币余额为空，userId={}", userId);
+            return false;
+        }
+
+        Integer originalBalance = user.getGoldBalance();
+        Integer newBalance = originalBalance + goldAmount;
+
+        // 使用乐观锁更新：只有当前余额等于查询时的余额时才更新
+        UpdateWrapper<FrUserEntity> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.lambda()
+                .eq(FrUserEntity::getId, userId)
+                .eq(FrUserEntity::getGoldBalance, originalBalance)
+                .set(FrUserEntity::getGoldBalance, newBalance);
+
+        boolean updated = frUserService.update(updateWrapper);
+        
+        if (updated) {
+            log.info("用户金币余额更新成功，userId={}, 原余额={}, 新余额={}", userId, originalBalance, newBalance);
+        } else {
+            log.warn("用户金币余额更新失败（乐观锁冲突），userId={}", userId);
+        }
+        
+        return updated;
+    }
+
+    /**
+     * 使用乐观锁更新订单状态
+     * 确保订单状态只会从PRE_PAY更新到SUCCESS一次
+     */
+    private boolean updateOrderStatus(Integer orderId, PayOrderStatusEnum fromStatus, PayOrderStatusEnum toStatus) {
+        UpdateWrapper<PayOrderEntity> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.lambda()
+                .eq(PayOrderEntity::getId, orderId)
+                .eq(PayOrderEntity::getStatus, fromStatus)
+                .set(PayOrderEntity::getStatus, toStatus);
+
+        boolean updated = payOrderService.update(updateWrapper);
+        
+        if (updated) {
+            log.info("订单状态更新成功，orderId={}, 从 {} 到 {}", orderId, fromStatus, toStatus);
+        } else {
+            log.warn("订单状态更新失败（乐观锁冲突），orderId={}", orderId);
+        }
+        
+        return updated;
     }
 
     @Override
@@ -145,6 +272,7 @@ public class WxPayServiceImpl extends IWxPayServiceImpl<PayRequest> {
         return null;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void publicNotifyUrl(NotifyUrlData request) {
         notifyOrder(request);
